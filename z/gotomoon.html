@@ -1,0 +1,325 @@
+	<!DOCTYPE html>
+	<html lang="zh-CN">
+	<head>
+	    <meta charset="UTF-8">
+	    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	    <title>地月轨道系统模拟</title>
+	    <style>
+	        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; color: white; }
+	        #canvas { display: block; }
+	        #hud {
+	            position: absolute;
+	            top: 20px;
+	            left: 20px;
+	            background: rgba(0, 0, 0, 0.7);
+	            border: 1px solid #0af;
+	            padding: 15px;
+	            border-radius: 10px;
+	            width: 280px;
+	            box-shadow: 0 0 15px rgba(0, 170, 255, 0.3);
+	        }
+	        h2 { margin: 0 0 10px 0; color: #0af; text-transform: uppercase; font-size: 16px; border-bottom: 1px solid #0af; padding-bottom: 5px; }
+	        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+	        .data-item { background: rgba(255,255,255,0.05); padding: 5px; border-radius: 4px; }
+	        .label { font-size: 10px; color: #888; display: block; }
+	        .value { font-size: 14px; color: #fff; font-weight: bold; }
+	        button {
+	            width: 100%; padding: 12px; margin-top: 5px;
+	            background: linear-gradient(45deg, #0066cc, #0099ff);
+	            border: none; color: white; border-radius: 5px;
+	            font-weight: bold; cursor: pointer; transition: 0.2s;
+	            text-transform: uppercase;
+	        }
+	        button:hover { transform: scale(1.02); box-shadow: 0 0 10px #0af; }
+	        button:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; box-shadow: none; }
+	        #log {
+	            position: absolute;
+	            bottom: 20px;
+	            left: 20px;
+	            width: 300px;
+	            height: 120px;
+	            background: rgba(0,0,0,0.5);
+	            border-left: 3px solid #0af;
+	            padding: 10px;
+	            font-size: 12px;
+	            color: #ccc;
+	            overflow-y: auto;
+	        }
+	    </style>
+	</head>
+	<body>
+	<canvas id="canvas"></canvas>
+	<div id="hud">
+	    <h2>飞行控制计算机</h2>
+	    <div class="data-grid">
+	        <div class="data-item">
+	            <span class="label">任务时间</span>
+	            <span class="value" id="time">T+00:00</span>
+	        </div>
+	        <div class="data-item">
+	            <span class="label">任务阶段</span>
+	            <span class="value" id="phase">待命</span>
+	        </div>
+	        <div class="data-item">
+	            <span class="label">地月距离</span>
+	            <span class="value" id="dist">384,400 km</span>
+	        </div>
+	        <div class="data-item">
+	            <span class="label">月球轨道角度</span>
+	            <span class="value" id="moonAngle">0°</span>
+	        </div>
+	    </div>
+	    <button id="mainBtn" onclick="handleAction()">启动发射程序</button>
+	</div>
+	<div id="log"></div>
+	<script>
+	    const canvas = document.getElementById('canvas');
+	    const ctx = canvas.getContext('2d');
+	    let W, H, centerX, centerY;
+	    function resize() {
+	        W = canvas.width = window.innerWidth;
+	        H = canvas.height = window.innerHeight;
+	        centerX = W / 2;
+	        centerY = H / 2;
+	    }
+	    window.addEventListener('resize', resize);
+	    resize();
+	    // --- 物理参数 ---
+	    const SCALE = 1; // 缩放比例
+	    const EARTH_RADIUS = 60;
+	    const MOON_RADIUS = 20;
+	    const ORBIT_RADIUS = 250; // 地月距离(模拟值)
+	    // --- 状态对象 ---
+	    let state = {
+	        earthRot: 0,        // 地球自转角度
+	        moonAngle: 0,       // 月球公转角度
+	        phase: 'IDLE',      // IDLE, LAUNCH, TRANSFER, ORBIT_MOON, LANDING, SURFACE, RETURN, SPLASHDOWN
+	        missionTime: 0,
+	        ship: { x: 0, y: 0, angle: 0, visible: true },
+	        targetMoonAngle: 0, // 飞船目标拦截角度
+	        progress: 0         // 动画进度 0-1
+	    };
+	    // --- 绘图函数 ---
+	    // 绘制星空背景
+	    const stars = Array.from({length: 200}, () => ({x: Math.random(), y: Math.random(), s: Math.random()*1.5}));
+	    function drawStars() {
+	        ctx.fillStyle = '#fff';
+	        stars.forEach(s => {
+	            ctx.beginPath();
+	            ctx.arc(s.x * W, s.y * H, s.s, 0, Math.PI*2);
+	            ctx.fill();
+	        });
+	    }
+	    // 绘制地球 (中心)
+	    function drawEarth() {
+	        ctx.save();
+	        ctx.translate(centerX, centerY);
+	        // 绘制轨道
+	        ctx.beginPath();
+	        ctx.arc(0, 0, ORBIT_RADIUS, 0, Math.PI*2);
+	        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+	        ctx.setLineDash([5, 5]);
+	        ctx.stroke();
+	        ctx.setLineDash([]);
+	        // 绘制地球本体
+	        ctx.beginPath();
+	        ctx.arc(0, 0, EARTH_RADIUS, 0, Math.PI*2);
+	        ctx.fillStyle = '#4a90e2'; // 海洋蓝
+	        ctx.fill();
+	        // 模拟自转的大陆
+	        ctx.rotate(state.earthRot);
+	        ctx.fillStyle = '#2ecc71'; // 陆地绿
+	        // 简单画几块大陆形状
+	        ctx.beginPath(); ctx.arc(-20, -20, 20, 0, Math.PI*2); ctx.fill(); // 大陆1
+	        ctx.beginPath(); ctx.arc(30, 10, 15, 0, Math.PI*2); ctx.fill();   // 大陆2
+	        ctx.beginPath(); ctx.arc(0, 40, 20, 0, Math.PI*2); ctx.fill();    // 大陆3
+	        ctx.restore();
+	    }
+	    // 绘制月球 (公转)
+	    function drawMoon() {
+	        // 计算月球坐标
+	        const mx = centerX + Math.cos(state.moonAngle) * ORBIT_RADIUS;
+	        const my = centerY + Math.sin(state.moonAngle) * ORBIT_RADIUS;
+	        ctx.save();
+	        ctx.translate(mx, my);
+	        // 绘制月球本体
+	        ctx.beginPath();
+	        ctx.arc(0, 0, MOON_RADIUS, 0, Math.PI*2);
+	        ctx.fillStyle = '#ccc';
+	        ctx.fill();
+	        // 陨石坑细节
+	        ctx.fillStyle = '#aaa';
+	        ctx.beginPath(); ctx.arc(-5, -5, 4, 0, Math.PI*2); ctx.fill();
+	        ctx.beginPath(); ctx.arc(8, 5, 3, 0, Math.PI*2); ctx.fill();
+	        ctx.restore();
+	        return { x: mx, y: my, r: MOON_RADIUS };
+	    }
+	    // 绘制飞船
+	    function drawShip() {
+	        if (!state.ship.visible) return;
+	        ctx.save();
+	        ctx.translate(state.ship.x, state.ship.y);
+	        ctx.rotate(state.ship.angle);
+	        // 引擎火焰
+	        if (['LAUNCH', 'TRANSFER', 'RETURN'].includes(state.phase)) {
+	            ctx.fillStyle = `rgba(255, 100, 0, ${0.5 + Math.random()*0.5})`;
+	            ctx.beginPath();
+	            ctx.moveTo(-10, 0);
+	            ctx.lineTo(-20 - Math.random()*10, 5);
+	            ctx.lineTo(-20 - Math.random()*10, -5);
+	            ctx.fill();
+	        }
+	        // 飞船本体
+	        ctx.fillStyle = '#fff';
+	        ctx.beginPath();
+	        ctx.moveTo(10, 0);
+	        ctx.lineTo(-5, -5);
+	        ctx.lineTo(-5, 5);
+	        ctx.fill();
+	        ctx.restore();
+	    }
+	    // --- 核心逻辑 ---
+	    function log(msg) {
+	        const el = document.getElementById('log');
+	        el.innerHTML = `> ${new Date().toLocaleTimeString()} ${msg}<br>` + el.innerHTML;
+	    }
+	    function handleAction() {
+	        const btn = document.getElementById('mainBtn');
+	        if (state.phase === 'IDLE') {
+	            state.phase = 'LAUNCH';
+	            // 计算拦截点：月球当前角度 + 飞行时间预估的角度偏移
+	            // 假设飞行耗时0.5个时间单位，月球移动速度是0.02
+	            state.targetMoonAngle = state.moonAngle + Math.PI; // 简化：瞄准月球对面发射，利用霍曼转移
+	            state.progress = 0;
+	            btn.innerText = "发射进行中...";
+	            btn.disabled = true;
+	            log("发射！进入地月转移轨道");
+	        } 
+	        else if (state.phase === 'ORBIT_MOON') {
+	            state.phase = 'LANDING';
+	            state.progress = 0;
+	            btn.innerText = "着陆中...";
+	            btn.disabled = true;
+	            log("启动下降引擎，准备着陆");
+	        }
+	        else if (state.phase === 'SURFACE') {
+	            state.phase = 'RETURN';
+	            state.progress = 0;
+	            btn.innerText = "返回中...";
+	            btn.disabled = true;
+	            log("上升舱起飞，返回地球");
+	        }
+	        else if (state.phase === 'SPLASHDOWN') {
+	            location.reload();
+	        }
+	    }
+	    function update() {
+	        // 1. 天体运动
+	        state.earthRot += 0.02; // 地球自转
+	        state.moonAngle += 0.005; // 月球公转
+	        // 更新UI
+	        document.getElementById('moonAngle').innerText = Math.round(state.moonAngle * 180 / Math.PI % 360) + "°";
+	        // 初始飞船位置
+	        if (state.phase === 'IDLE') {
+	            // 在地球表面
+	            const launchAngle = -Math.PI/2; // 向上发射
+	            state.ship.x = centerX + Math.cos(launchAngle) * (EARTH_RADIUS + 10);
+	            state.ship.y = centerY + Math.sin(launchAngle) * (EARTH_RADIUS + 10);
+	            state.ship.angle = launchAngle + Math.PI/2;
+	        }
+	        // 2. 飞船运动逻辑
+	        if (state.phase === 'LAUNCH') {
+	            // 阶段1：爬升
+	            state.ship.y -= 3;
+	            state.ship.x += 1; // 稍微偏向轨迹
+	            if (state.ship.y < centerY - 150) {
+	                state.phase = 'TRANSFER';
+	                log("进入太空，开始追逐月球");
+	            }
+	        } 
+	        else if (state.phase === 'TRANSFER') {
+	            // 阶段2：飞向月球拦截点
+	            // 目标点：预测的月球位置
+	            let targetX = centerX + Math.cos(state.moonAngle + 0.5) * ORBIT_RADIUS;
+	            let targetY = centerY + Math.sin(state.moonAngle + 0.5) * ORBIT_RADIUS;
+	            let dx = targetX - state.ship.x;
+	            let dy = targetY - state.ship.y;
+	            let dist = Math.sqrt(dx*dx + dy*dy);
+	            if (dist > 30) {
+	                state.ship.x += (dx/dist) * 4;
+	                state.ship.y += (dy/dist) * 4;
+	                state.ship.angle = Math.atan2(dy, dx);
+	            } else {
+	                state.phase = 'ORBIT_MOON';
+	                document.getElementById('mainBtn').innerText = "执行登月";
+	                document.getElementById('mainBtn').disabled = false;
+	                log("已被月球引力捕获，进入环月轨道");
+	            }
+	        }
+	        else if (state.phase === 'ORBIT_MOON') {
+	            // 环绕月球运动
+	            let mx = centerX + Math.cos(state.moonAngle) * ORBIT_RADIUS;
+	            let my = centerY + Math.sin(state.moonAngle) * ORBIT_RADIUS;
+	            // 飞船在月球周围的小圆轨道
+	            let orbitAngle = Date.now() / 500; // 快速绕月
+	            state.ship.x = mx + Math.cos(orbitAngle) * 35;
+	            state.ship.y = my + Math.sin(orbitAngle) * 35;
+	            state.ship.angle = orbitAngle + Math.PI/2;
+	        }
+	        else if (state.phase === 'LANDING') {
+	            let mx = centerX + Math.cos(state.moonAngle) * ORBIT_RADIUS;
+	            let my = centerY + Math.sin(state.moonAngle) * ORBIT_RADIUS;
+	            // 向月球中心移动
+	            let dx = mx - state.ship.x;
+	            let dy = my - state.ship.y;
+	            let dist = Math.sqrt(dx*dx + dy*dy);
+	            if (dist > MOON_RADIUS) {
+	                state.ship.x += (dx/dist) * 2;
+	                state.ship.y += (dy/dist) * 2;
+	            } else {
+	                state.phase = 'SURFACE';
+	                document.getElementById('mainBtn').innerText = "启动返回程序";
+	                document.getElementById('mainBtn').disabled = false;
+	                log("着陆成功！月球表面作业开始");
+	            }
+	        }
+	        else if (state.phase === 'SURFACE') {
+	            // 随月球公转
+	            let mx = centerX + Math.cos(state.moonAngle) * ORBIT_RADIUS;
+	            let my = centerY + Math.sin(state.moonAngle) * ORBIT_RADIUS;
+	            state.ship.x = mx;
+	            state.ship.y = my + MOON_RADIUS/2;
+	            state.ship.angle = -Math.PI/2; // 直立
+	        }
+	        else if (state.phase === 'RETURN') {
+	            // 返回地球
+	            let dx = centerX - state.ship.x;
+	            let dy = centerY - state.ship.y;
+	            let dist = Math.sqrt(dx*dx + dy*dy);
+	            if (dist > EARTH_RADIUS + 20) {
+	                state.ship.x += (dx/dist) * 5;
+	                state.ship.y += (dy/dist) * 5;
+	                state.ship.angle = Math.atan2(dy, dx);
+	            } else {
+	                state.phase = 'SPLASHDOWN';
+	                document.getElementById('mainBtn').innerText = "任务完成，重置模拟";
+	                document.getElementById('mainBtn').disabled = false;
+	                log("成功溅落地球！任务圆满成功");
+	            }
+	        }
+	    }
+	    function animate() {
+	        ctx.clearRect(0, 0, W, H);
+	        drawStars();
+	        drawEarth();
+	        drawMoon();
+	        update();
+	        drawShip();
+	        requestAnimationFrame(animate);
+	    }
+	    // 启动
+	    log("系统就绪。地球自转中，月球公转中。");
+	    animate();
+	</script>
+	</body>
+	</html>

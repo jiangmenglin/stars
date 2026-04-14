@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>地月运动体系 - Three.js 模拟</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Microsoft YaHei', sans-serif;
+            background-color: black;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 12px 20px;
+            border-radius: 8px;
+            pointer-events: none;
+            z-index: 100;
+            border-left: 4px solid #ffaa00;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        #controls-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #aaa;
+            background: rgba(20,20,20,0.6);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+        #status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #ddd;
+            background: rgba(0,0,0,0.6);
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 100;
+            text-align: right;
+            border-right: 4px solid #3399ff;
+            backdrop-filter: blur(5px);
+        }
+        #note {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: #888;
+            background: rgba(0,0,0,0.4);
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 100;
+        }
+        a {
+            color: #88ccff;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>🌍 地月系统 🌕</h1>
+        <p>绕共同质心运动 | 月球潮汐锁定 (固定一面朝向地球)</p>
+    </div>
+    <div id="status">
+        <div>月相角: <span id="phase-angle">0.0</span>°</div>
+        <div>距离: <span id="distance">384.4</span> 千公里</div>
+        <div style="margin-top:8px; font-size:12px; color:#aaa;">月球轨道倾角 ≈ 5.1° (可视化增强)</div>
+    </div>
+    <div id="controls-hint">
+        🖱️ 鼠标拖动旋转视角 | 滚轮缩放 | 右键平移
+    </div>
+    <div id="note">
+        ⚡ 为视觉效果: 月球尺寸放大, 距离缩短 | 纹理: NASA Visible Earth
+    </div>
+
+    <!-- 引入 Three.js 核心库和辅助库 -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+        
+        // --- 初始化场景、相机、渲染器 ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050510); // 深空色
+        
+        // 主渲染器
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = false; // 本场景不需要阴影，提升性能
+        document.body.appendChild(renderer.domElement);
+        
+        // CSS2渲染器用于文字标签 (始终面向相机)
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.left = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';  // 让点击穿透到画布
+        document.body.appendChild(labelRenderer.domElement);
+        
+        // --- 相机 (透视) ---
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 8, 20);
+        camera.lookAt(0, 0, 0);
+        
+        // --- 轨道控制器 ---
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = false;
+        controls.enableZoom = true;
+        controls.enablePan = true;
+        controls.target.set(0, 0, 0);
+        controls.maxPolarAngle = Math.PI / 1.8; // 限制向下角度，避免颠倒
+        
+        // --- 光照设置 ---
+        // 环境光
+        scene.add(new THREE.AmbientLight(0x404060, 0.5));
+        // 主光源 - 模拟太阳的平行光
+        const sunLight = new THREE.DirectionalLight(0xffeedd, 1.2);
+        sunLight.position.set(10, 20, 5);
+        scene.add(sunLight);
+        // 补光源，让背光面不至于全黑
+        const fillLight1 = new THREE.DirectionalLight(0x446688, 0.3);
+        fillLight1.position.set(-10, 0, -10);
+        scene.add(fillLight1);
+        const fillLight2 = new THREE.PointLight(0x335577, 0.2);
+        fillLight2.position.set(5, 5, 15);
+        scene.add(fillLight2);
+        
+        // 添加一点点柔和的光从侧面
+        const backLight = new THREE.PointLight(0x225588, 0.15);
+        backLight.position.set(-5, 0, -15);
+        scene.add(backLight);
+        
+        // --- 星空背景 (粒子系统) ---
+        const starsGeometry = new THREE.BufferGeometry();
+        const starsCount = 4000;
+        const starsPositions = new Float32Array(starsCount * 3);
+        for (let i = 0; i < starsCount * 3; i += 3) {
+            // 分布在半径 200-500 的球壳内
+            const r = 200 + Math.random() * 300;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos((Math.random() * 2) - 1);
+            starsPositions[i] = Math.sin(phi) * Math.cos(theta) * r;
+            starsPositions[i+1] = Math.sin(phi) * Math.sin(theta) * r;
+            starsPositions[i+2] = Math.cos(phi) * r;
+        }
+        starsGeometry.setAttribute('position', new THREE.BufferAttribute(starsPositions, 3));
+        const starsMaterial = new THREE.PointsMaterial({color: 0xffffff, size: 0.3, transparent: true});
+        const stars = new THREE.Points(starsGeometry, starsMaterial);
+        scene.add(stars);
+        
+        // --- 辅助元素: 网格和轴线 (可选，为了视觉参考，但为了美观可以去掉网格，用淡淡的轨道线代替) ---
+        // 添加一个非常淡的参考网格平面 (表示黄道面附近)
+        const gridHelper = new THREE.GridHelper(30, 20, 0x446688, 0x224466);
+        gridHelper.position.y = -0.5;
+        gridHelper.visible = true;
+        scene.add(gridHelper);
+        
+        // 坐标轴 (短一些)
+        // const axesHelper = new THREE.AxesHelper(10);
+        // scene.add(axesHelper);
+        
+        // --- 常量定义 (可视化调整后的比例) ---
+        // 为了视觉效果，距离和大小都做了非真实比例调整
+        const EARTH_RADIUS = 1.5;
+        const MOON_RADIUS = 0.6;        // 真实比例月球约地球的0.27，这里放大以便看清
+        const ORBIT_RADIUS = 5.5;        // 地月距离 (质心到月球中心)
+        const EARTH_OFFSET = 0.45;       // 地球中心到质心的距离 (基于质量比简化)
+        
+        // 轨道倾角 (弧度)，让月球轨道稍微倾斜，更有立体感
+        const INCLINATION = 0.15; // 约8.6度，比真实5.1度稍大以便观察
+        
+        // 公转速度系数 (控制动画快慢)
+        const SPEED = 0.5;
+        
+        // --- 创建纹理加载器 ---
+        const loader = new THREE.TextureLoader();
+        // 使用高质量的在线纹理 (来自 Three.js 示例和 NASA 数据)
+        const earthMap = loader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+        const earthSpecularMap = loader.load('https://threejs.org/examples/textures/planets/earth_specular_2048.jpg');
+        const earthNormalMap = loader.load('https://threejs.org/examples/textures/planets/earth_normal_2048.jpg');
+        const cloudMap = loader.load('https://threejs.org/examples/textures/planets/earth_clouds_1024.png');
+        
+        const moonMap = loader.load('https://threejs.org/examples/textures/planets/moon_1024.jpg');
+        // 月球没有大气，简单些
+        
+        // --- 创建地球 (带云层效果) ---
+        // 地球主体
+        const earthMaterial = new THREE.MeshPhongMaterial({
+            map: earthMap,
+            specularMap: earthSpecularMap,
+            specular: new THREE.Color('grey'),
+            shininess: 10,
+            normalMap: earthNormalMap,
+            normalScale: new THREE.Vector2(1.5, 1.5),
+        });
+        const earth = new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS, 64, 64), earthMaterial);
+        
+        // 云层 (透明，稍微大一点)
+        const cloudMaterial = new THREE.MeshPhongMaterial({
+            map: cloudMap,
+            transparent: true,
+            opacity: 0.4,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide
+        });
+        const cloudMesh = new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS * 1.01, 64, 64), cloudMaterial);
+        earth.add(cloudMesh); // 云层作为地球子元素，跟随地球
+        
+        // 地球自转轴倾斜 (约23.5度，可视化中保留)
+        earth.rotation.x = -0.15;
+        earth.rotation.y = 2.5;
+        
+        // 地球位置由动画更新，先放在原点附近
+        
+        // --- 创建月球 ---
+        const moonMaterial = new THREE.MeshStandardMaterial({
+            map: moonMap,
+            roughness: 0.8,
+            metalness: 0.1,
+        });
+        const moon = new THREE.Mesh(new THREE.SphereGeometry(MOON_RADIUS, 48, 48), moonMaterial);
+        // 月球潮汐锁定：固定一面朝向地球，在动画循环中会调整 rotation
+        
+        // --- 轨道线 (可视化月球轨道) ---
+        // 创建一个椭圆路径 (实际上接近正圆)
+        const orbitPoints = [];
+        const segments = 128;
+        for (let i = 0; i <= segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            // 考虑倾角: 绕 X 轴旋转 INCLINATION
+            const x = ORBIT_RADIUS * Math.cos(angle);
+            const y = ORBIT_RADIUS * Math.sin(angle) * Math.sin(INCLINATION);
+            const z = ORBIT_RADIUS * Math.sin(angle) * Math.cos(INCLINATION);
+            orbitPoints.push(new THREE.Vector3(x, y, z));
+        }
+        const orbitGeometry = new THREE.BufferGeometry().setFromPoints(orbitPoints);
+        const orbitMaterial = new THREE.LineBasicMaterial({ color: 0x88aaff });
+        const orbitLine = new THREE.LineLoop(orbitGeometry, orbitMaterial);
+        scene.add(orbitLine);
+        
+        // 添加质心标记 (小光点)
+        const barycenterMarker = new THREE.Mesh(
+            new THREE.SphereGeometry(0.08, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffaa00 })
+        );
+        scene.add(barycenterMarker);
+        
+        // 添加从质心到地球和月球的连线 (可选)
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x6699cc, transparent: true, opacity: 0.3 });
+        const earthLineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0)]);
+        const moonLineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0)]);
+        const earthLine = new THREE.Line(earthLineGeo, lineMaterial);
+        const moonLine = new THREE.Line(moonLineGeo, lineMaterial);
+        scene.add(earthLine);
+        scene.add(moonLine);
+        
+        // --- 标签系统 (CSS2DRenderer) ---
+        function createLabel(text, color = '#ffffff', fontSize = '16px') {
+            const div = document.createElement('div');
+            div.textContent = text;
+            div.style.color = color;
+            div.style.fontSize = fontSize;
+            div.style.fontWeight = 'bold';
+            div.style.textShadow = '1px 1px 3px black';
+            div.style.pointerEvents = 'none';
+            div.style.userSelect = 'none';
+            div.style.background = 'rgba(20,20,40,0.7)';
+            div.style.padding = '4px 12px';
+            div.style.borderRadius = '20px';
+            div.style.backdropFilter = 'blur(4px)';
+            div.style.border = '1px solid '+color;
+            return new CSS2DObject(div);
+        }
+        
+        const earthLabel = createLabel('🌍 地球', '#88ccff', '18px');
+        earthLabel.position.set(0, EARTH_RADIUS + 0.8, 0);
+        earth.add(earthLabel);
+        
+        const moonLabel = createLabel('🌕 月球', '#dddddd', '16px');
+        moonLabel.position.set(0, MOON_RADIUS + 0.6, 0);
+        moon.add(moonLabel);
+        
+        const baryLabel = createLabel('⚫ 质心', '#ffaa00', '14px');
+        baryLabel.position.set(0, 0.3, 0);
+        scene.add(baryLabel);
+        
+        // 将地球和月球加入场景
+        scene.add(earth);
+        scene.add(moon);
+        
+        // 添加一些光晕效果的点光源在地球附近 (装饰)
+        const earthGlowLight = new THREE.PointLight(0x446688, 0.5);
+        earth.add(earthGlowLight);
+        
+        // --- 动画变量 ---
+        let clock = new THREE.Clock();
+        
+        // --- 辅助: 更新UI信息 ---
+        function updateUI(phaseDeg, distanceKm) {
+            document.getElementById('phase-angle').textContent = phaseDeg.toFixed(1);
+            document.getElementById('distance').textContent = distanceKm.toFixed(1);
+        }
+        
+        // --- 动画循环 ---
+        function animate() {
+            const delta = clock.getDelta();
+            const elapsedTime = performance.now() * 0.001; // seconds
+            
+            // 公转角度 (随时间增加)
+            const angle = elapsedTime * SPEED * 0.8; // 调整速度
+            
+            // 计算月球位置 (考虑倾角)
+            // 基础圆轨道
+            const moonX = ORBIT_RADIUS * Math.cos(angle);
+            const moonY = ORBIT_RADIUS * Math.sin(angle) * Math.sin(INCLINATION);
+            const moonZ = ORBIT_RADIUS * Math.sin(angle) * Math.cos(INCLINATION);
+            const moonPos = new THREE.Vector3(moonX, moonY, moonZ);
+            
+            // 地球位置: 质心在原点，地球位于月球相反方向，距离为 EARTH_OFFSET
+            const earthDir = moonPos.clone().normalize().negate();
+            const earthPos = earthDir.multiplyScalar(EARTH_OFFSET);
+            
+            earth.position.copy(earthPos);
+            moon.position.copy(moonPos);
+            
+            // 更新连线
+            const pointsEarthLine = [new THREE.Vector3(0,0,0), earthPos.clone()];
+            earthLine.geometry.dispose();
+            earthLine.geometry = new THREE.BufferGeometry().setFromPoints(pointsEarthLine);
+            
+            const pointsMoonLine = [new THREE.Vector3(0,0,0), moonPos.clone()];
+            moonLine.geometry.dispose();
+            moonLine.geometry = new THREE.BufferGeometry().setFromPoints(pointsMoonLine);
+            
+            // 地球自转 (缓慢)
+            earth.rotation.y += 0.002;
+            // 云层以稍快速度旋转
+            if (earth.children[0] instanceof THREE.Mesh && earth.children[0].material.map === cloudMap) {
+                earth.children[0].rotation.y += 0.001;
+            }
+            
+            // 月球自转 (潮汐锁定: 周期与公转一致，且固定一面朝向地球)
+            // 简便方法: 让月球的本地坐标系指向地球方向
+            moon.lookAt(earth.position);
+            // 由于 lookAt 会让月球的 Z 轴指向地球，但纹理映射可能不对，需要调整初始旋转
+            // 我们可以在 lookAt 之后旋转修正，使纹理正确显示 (这里简单起见，不做精细调整)
+            // 实际上月球纹理的正面是固定的，我们旋转一下使其好看
+            moon.rotateY(Math.PI); // 调整方向让纹理的显著特征朝外
+            
+            // 计算月相角: 太阳方向 (假设太阳光方向固定，从 sunLight 位置来)
+            const sunDir = sunLight.position.clone().normalize();
+            const earthToMoon = moonPos.clone().sub(earthPos).normalize();
+            // 相位角: 地球-月球连线与太阳光方向的夹角
+            const dot = earthToMoon.dot(sunDir);
+            const phaseRad = Math.acos(Math.max(-1, Math.min(1, dot)));
+            const phaseDeg = phaseRad * 180 / Math.PI;
+            
+            // 计算实际距离 (千米) - 基于真实平均距离 384400 km 映射
+            const realDistanceKm = (moonPos.length() / ORBIT_RADIUS) * 384400;
+            
+            updateUI(phaseDeg, realDistanceKm);
+            
+            // 星空缓慢旋转，增加沉浸感
+            stars.rotation.y += 0.0001;
+            
+            // 控制器更新 (阻尼)
+            controls.update();
+            
+            // 渲染
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+            
+            requestAnimationFrame(animate);
+        }
+        
+        animate();
+        
+        // --- 窗口大小自适应 ---
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // 开始动画前，初始化一下连线
+        setTimeout(() => {
+            // 触发一次更新
+        }, 100);
+        
+        // 显示加载完成
+        console.log('地月系统模拟已启动 - 设计: 绕共同质心，可视化增强');
+    </script>
+</body>
+</html>

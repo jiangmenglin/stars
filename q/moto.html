@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>四缸摩托车发动机模拟器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+  .header {
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border-bottom: 2px solid #e94560;
+  }
+  .header h1 {
+    font-size: 2em;
+    background: linear-gradient(90deg, #e94560, #f5a623, #e94560);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+  }
+  .header p { color: #888; margin-top: 5px; font-size: 0.95em; }
+  .main-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .engine-panel {
+    background: linear-gradient(145deg, #1a1a2e, #0f0f1a);
+    border-radius: 16px;
+    border: 1px solid #2a2a4a;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(233, 69, 96, 0.1);
+  }
+  canvas { display: block; border-radius: 8px; }
+  .control-panel {
+    background: linear-gradient(145deg, #1a1a2e, #0f0f1a);
+    border-radius: 16px;
+    border: 1px solid #2a2a4a;
+    padding: 20px;
+    width: 300px;
+    box-shadow: 0 8px 32px rgba(233, 69, 96, 0.1);
+  }
+  .control-panel h3 {
+    color: #e94560;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+    border-bottom: 1px solid #2a2a4a;
+    padding-bottom: 10px;
+  }
+  .control-group { margin-bottom: 20px; }
+  .control-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #aaa;
+    font-size: 0.9em;
+  }
+  .control-group .value {
+    color: #f5a623;
+    font-weight: bold;
+    font-size: 1.3em;
+    display: inline-block;
+    margin-left: 5px;
+  }
+  input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: #2a2a4a;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #e94560;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+  }
+  .btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-bottom: 10px;
+  }
+  .btn-start {
+    background: linear-gradient(135deg, #e94560, #c73650);
+    color: white;
+  }
+  .btn-start:hover { box-shadow: 0 0 20px rgba(233, 69, 96, 0.4); }
+  .btn-start.running {
+    background: linear-gradient(135deg, #555, #333);
+  }
+  .status-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .status-item {
+    background: #0f0f1a;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    border: 1px solid #2a2a4a;
+  }
+  .status-item .label { font-size: 0.75em; color: #666; }
+  .status-item .val { font-size: 1.1em; color: #f5a623; font-weight: bold; }
+  .stroke-legend {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85em;
+    padding: 6px 8px;
+    background: #0f0f1a;
+    border-radius: 6px;
+  }
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .cylinder-status {
+    margin-top: 15px;
+  }
+  .cyl-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    background: #0f0f1a;
+    border-radius: 6px;
+    border: 1px solid #2a2a4a;
+  }
+  .cyl-name { font-weight: bold; color: #e94560; }
+  .cyl-stroke { font-size: 0.85em; }
+  .fire-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #333;
+    transition: all 0.05s;
+  }
+  .fire-indicator.firing {
+    background: #fff;
+    box-shadow: 0 0 12px #f5a623, 0 0 24px #e94560;
+  }
+  .rpm-gauge {
+    width: 100%;
+    height: 8px;
+    background: #2a2a4a;
+    border-radius: 4px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .rpm-gauge-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.1s, background 0.3s;
+  }
+  .info-section {
+    background: linear-gradient(145deg, #1a1a2e, #0f0f1a);
+    border-radius: 16px;
+    border: 1px solid #2a2a4a;
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto 20px;
+  }
+  .info-section h3 { color: #e94560; margin-bottom: 10px; }
+  .info-section p { color: #888; line-height: 1.6; font-size: 0.9em; }
+  .timing-canvas-wrap { text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🏍️ 四缸发动机运行模拟器</h1>
+  <p>Inline-4 · 四冲程 · DOHC · 16气门</p>
+</div>
+
+<div class="main-container">
+  <div class="engine-panel">
+    <canvas id="engineCanvas" width="700" height="520"></canvas>
+  </div>
+
+  <div class="control-panel">
+    <h3>⚙️ 控制面板</h3>
+
+    <div class="control-group">
+      <label>发动机状态</label>
+      <button class="btn btn-start" id="btnToggle" onclick="toggleEngine()">▶ 启动发动机</button>
+    </div>
+
+    <div class="control-group">
+      <label>节气门开度 (RPM): <span class="value" id="rpmValue">1000</span> RPM</label>
+      <input type="range" id="rpmSlider" min="800" max="14000" value="1000" step="100" oninput="updateRPM(this.value)">
+      <div class="rpm-gauge">
+        <div class="rpm-gauge-fill" id="rpmBar" style="width:10%; background: #4ade80;"></div>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>动画速度: <span class="value" id="speedValue">1.0</span>x</label>
+      <input type="range" id="speedSlider" min="1" max="30" value="10" step="1" oninput="updateSpeed(this.value)">
+    </div>
+
+    <h3>📊 实时数据</h3>
+    <div class="status-grid">
+      <div class="status-item">
+        <div class="label">曲轴角度</div>
+        <div class="val" id="crankAngle">0°</div>
+      </div>
+      <div class="status-item">
+        <div class="label">循环周期</div>
+        <div class="val" id="cycleTime">-</div>
+      </div>
+      <div class="status-item">
+        <div class="label">功率输出</div>
+        <div class="val" id="powerOutput">0 kW</div>
+      </div>
+      <div class="status-item">
+        <div class="label">运行时间</div>
+        <div class="val" id="runTime">00:00</div>
+      </div>
+    </div>
+
+    <div class="cylinder-status" id="cylStatus">
+      <h3 style="margin-top:15px;">🔥 气缸状态</h3>
+    </div>
+
+    <h3 style="margin-top:15px;">🎨 冲程图例</h3>
+    <div class="stroke-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#4a9eff;"></div>进气冲程</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4ade80;"></div>压缩冲程</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f5a623;"></div>做功冲程</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#888;"></div>排气冲程</div>
+    </div>
+  </div>
+</div>
+
+<div class="info-section">
+  <h3>📖 四冲程发动机工作原理</h3>
+  <p>
+    <strong style="color:#4a9eff;">进气 (Intake):</strong> 活塞下行，进气门打开，可燃混合气被吸入气缸。<br>
+    <strong style="color:#4ade80;">压缩 (Compression):</strong> 活塞上行，进排气门关闭，混合气被压缩。<br>
+    <strong style="color:#f5a623;">做功 (Power):</strong> 火花塞点火，混合气燃烧膨胀，推动活塞下行输出动力。<br>
+    <strong style="color:#888;">排气 (Exhaust):</strong> 活塞上行，排气门打开，废气被排出气缸。<br><br>
+    四缸发动机曲轴每旋转720°完成一个完整工作循环，各缸点火间隔180°，点火顺序为 1→3→4→2，保证动力输出平顺。
+  </p>
+</div>
+
+<div class="info-section">
+  <h3>⏱️ 点火正时图</h3>
+  <div class="timing-canvas-wrap">
+    <canvas id="timingCanvas" width="1200" height="200"></canvas>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('engineCanvas');
+const ctx = canvas.getContext('2d');
+const tCanvas = document.getElementById('timingCanvas');
+const tCtx = tCanvas.getContext('2d');
+
+// State
+let engineRunning = false;
+let crankAngle = 0;
+let rpm = 1000;
+let speedMult = 1.0;
+let startTime = null;
+let lastTime = 0;
+let animId = null;
+
+// Colors
+const COLORS = {
+  intake: '#4a9eff',
+  compression: '#4ade80',
+  power: '#f5a623',
+  exhaust: '#888888',
+  metal: '#3a3a5c',
+  metalLight: '#4a4a6c',
+  metalDark: '#2a2a4c',
+  piston: '#c0c0d0',
+  crank: '#b87333',
+  fire: '#ff6600',
+  bg: '#0a0a12'
+};
+
+// Cylinder config
+const cylNames = ['气缸 1', '气缸 2', '气缸 3', '气缸 4'];
+const cylFiringOrder = [0, 2, 3, 1]; // 1-3-4-2 (0-indexed)
+const cylOffset = [0, 540, 180, 360]; // crank angle offset for each cylinder
+
+function getStroke(cylIndex, angle) {
+  const a = ((angle + cylOffset[cylIndex]) % 720 + 720) % 720;
+  if (a < 180) return { name: '进气', color: COLORS.intake, type: 'intake' };
+  if (a < 360) return { name: '压缩', color: COLORS.compression, type: 'compression' };
+  if (a < 540) return { name: '做功', color: COLORS.power, type: 'power' };
+  return { name: '排气', color: COLORS.exhaust, type: 'exhaust' };
+}
+
+function getPistonY(cylIndex, angle) {
+  const a = ((angle + cylOffset[cylIndex]) * Math.PI / 180);
+  // Simplified piston motion
+  return Math.cos(a);
+}
+
+function drawEngine() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // Background gradient
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, '#0f0f1a');
+  bgGrad.addColorStop(1, '#1a1a2e');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  const cylWidth = 80;
+  const cylGap = 55;
+  const totalWidth = cylWidth * 4 + cylGap * 3;
+  const startX = (W - totalWidth) / 2;
+  const cylTop = 60;
+  const cylHeight = 280;
+  const crankCenterY = cylTop + cylHeight + 50;
+
+  // Draw cylinder block background
+  const blockGrad = ctx.createLinearGradient(startX - 20, 0, startX + totalWidth + 20, 0);
+  blockGrad.addColorStop(0, '#1a1a2e');
+  blockGrad.addColorStop(0.5, '#222240');
+  blockGrad.addColorStop(1, '#1a1a2e');
+  ctx.fillStyle = blockGrad;
+  ctx.beginPath();
+  ctx.roundRect(startX - 25, cylTop - 20, totalWidth + 50, cylHeight + 80, 12);
+  ctx.fill();
+  ctx.strokeStyle = '#2a2a4a';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Draw each cylinder
+  for (let i = 0; i < 4; i++) {
+    const x = startX + i * (cylWidth + cylGap);
+    const stroke = getStroke(i, crankAngle);
+    const pistonNorm = getPistonY(i, crankAngle); // -1 to 1
+    const pistonY = cylTop + 20 + (cylHeight - 80) * (1 - pistonNorm) / 2;
+
+    // Cylinder bore fill with stroke color (subtle)
+    const boreGrad = ctx.createLinearGradient(x, cylTop + 10, x + cylWidth, cylTop + 10);
+    boreGrad.addColorStop(0, stroke.color + '15');
+    boreGrad.addColorStop(0.5, stroke.color + '25');
+    boreGrad.addColorStop(1, stroke.color + '15');
+    ctx.fillStyle = boreGrad;
+    ctx.fillRect(x + 4, cylTop + 10, cylWidth - 8, cylHeight - 60);
+
+    // Cylinder walls
+    ctx.strokeStyle = COLORS.metal;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x, cylTop + 10);
+    ctx.lineTo(x, cylTop + cylHeight);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + cylWidth, cylTop + 10);
+    ctx.lineTo(x + cylWidth, cylTop + cylHeight);
+    ctx.stroke();
+
+    // Cylinder head
+    ctx.fillStyle = COLORS.metalDark;
+    ctx.beginPath();
+    ctx.roundRect(x - 5, cylTop - 5, cylWidth + 10, 20, [6, 6, 0, 0]);
+    ctx.fill();
+    ctx.strokeStyle = COLORS.metal;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Valves
+    const valveOpen = (stroke.type === 'intake' || stroke.type === 'exhaust');
+    const valveDir = stroke.type === 'intake' ? -1 : 1;
+    const valveLift = valveOpen ? 6 : 0;
+
+    // Intake valve (left)
+    if (stroke.type === 'intake') {
+      ctx.fillStyle = '#4a9eff80';
+      ctx.fillRect(x + 12, cylTop - 2 + valveLift, 8, 3);
+      ctx.strokeStyle = '#4a9eff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + 16, cylTop - 5);
+      ctx.lineTo(x + 16, cylTop + 5 + valveLift);
+      ctx.stroke();
+    }
+    // Exhaust valve (right)
+    if (stroke.type === 'exhaust') {
+      ctx.fillStyle = '#88888880';
+      ctx.fillRect(x + cylWidth - 20, cylTop - 2 + valveLift, 8, 3);
+      ctx.strokeStyle = '#888';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + cylWidth - 16, cylTop - 5);
+      ctx.lineTo(x + cylWidth - 16, cylTop + 5 + valveLift);
+      ctx.stroke();
+    }
+
+    // Spark plug & fire effect
+    if (stroke.type === 'power') {
+      const powerProgress = ((crankAngle + cylOffset[i]) % 720 - 360) / 180;
+      if (powerProgress < 0.3) {
+        // Spark effect
+        const sparkIntensity = 1 - powerProgress / 0.3;
+        ctx.save();
+        ctx.globalAlpha = sparkIntensity;
+
+        // Spark glow
+        const sparkGrad = ctx.createRadialGradient(
+          x + cylWidth / 2, cylTop + 15, 0,
+          x + cylWidth / 2, cylTop + 15, 30
+        );
+        sparkGrad.addColorStop(0, '#ffffff');
+        sparkGrad.addColorStop(0.3, '#f5a623');
+        sparkGrad.addColorStop(0.7, '#e94560');
+        sparkGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = sparkGrad;
+        ctx.fillRect(x, cylTop, cylWidth, 40);
+
+        // Flame
+        ctx.globalAlpha = sparkIntensity * 0.6;
+        const flameGrad = ctx.createRadialGradient(
+          x + cylWidth / 2, cylTop + 30, 0,
+          x + cylWidth / 2, cylTop + 30, 25
+        );
+        flameGrad.addColorStop(0, '#ff6600');
+        flameGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = flameGrad;
+        ctx.fillRect(x, cylTop + 10, cylWidth, 40);
+
+        ctx.restore();
+      }
+    }
+
+    // Intake flow animation
+    if (stroke.type === 'intake') {
+      ctx.save();
+      const flowAlpha = 0.3 + 0.2 * Math.sin(Date.now() / 200);
+      ctx.globalAlpha = flowAlpha;
+      ctx.fillStyle = COLORS.intake;
+      for (let f = 0; f < 3; f++) {
+        const fy = cylTop + 20 + f * 25 + (Date.now() / 50 % 25);
+        if (fy < pistonY - 10) {
+          ctx.beginPath();
+          ctx.arc(x + cylWidth / 2 + Math.sin(f + Date.now() / 300) * 8, fy, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+
+    // Exhaust flow animation
+    if (stroke.type === 'exhaust') {
+      ctx.save();
+      const flowAlpha = 0.3 + 0.2 * Math.sin(Date.now() / 200);
+      ctx.globalAlpha = flowAlpha;
+      ctx.fillStyle = COLORS.exhaust;
+      for (let f = 0; f < 3; f++) {
+        const fy = cylTop + 20 + f * 25 + (Date.now() / 50 % 25);
+        if (fy < pistonY - 10) {
+          ctx.beginPath();
+          ctx.arc(x + cylWidth / 2 + Math.sin(f + Date.now() / 300) * 8, fy, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+
+    // Piston
+    const pistonH = 30;
+    const pistonGrad = ctx.createLinearGradient(x, pistonY, x + cylWidth, pistonY);
+    pistonGrad.addColorStop(0, '#a0a0b8');
+    pistonGrad.addColorStop(0.5, '#d0d0e0');
+    pistonGrad.addColorStop(1, '#a0a0b8');
+    ctx.fillStyle = pistonGrad;
+    ctx.beginPath();
+    ctx.roundRect(x + 6, pistonY, cylWidth - 12, pistonH, 3);
+    ctx.fill();
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Piston rings
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 1.5;
+    for (let r = 0; r < 3; r++) {
+      ctx.beginPath();
+      ctx.moveTo(x + 8, pistonY + 5 + r * 7);
+      ctx.lineTo(x + cylWidth - 8, pistonY + 5 + r * 7);
+      ctx.stroke();
+    }
+
+    // Connecting rod
+    const rodTopX = x + cylWidth / 2;
+    const rodTopY = pistonY + pistonH;
+    const crankPinX = x + cylWidth / 2;
+    const crankPinY = crankCenterY + Math.sin((crankAngle + cylOffset[i]) * Math.PI / 180) * 25;
+
+    ctx.strokeStyle = COLORS.metalLight;
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(rodTopX, rodTopY);
+    ctx.lineTo(crankPinX, crankPinY);
+    ctx.stroke();
+
+    // Rod shading
+    ctx.strokeStyle = COLORS.metal;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(rodTopX, rodTopY);
+    ctx.lineTo(crankPinX, crankPinY);
+    ctx.stroke();
+
+    // Crank journal
+    ctx.fillStyle = COLORS.crank;
+    ctx.beginPath();
+    ctx.arc(crankPinX, crankPinY, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cylinder label
+    ctx.fillStyle = '#e94560';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`#${i + 1}`, x + cylWidth / 2, cylTop - 12);
+
+    // Stroke label
+    ctx.fillStyle = stroke.color;
+    ctx.font = '11px sans-serif';
+    ctx.fillText(stroke.name, x + cylWidth / 2, cylTop + cylHeight + 18);
+  }
+
+  // Crankshaft
+  const crankY = crankCenterY;
+  const crankLeft = startX - 10;
+  const crankRight = startX + totalWidth + 10;
+
+  // Main crankshaft line
+  ctx.strokeStyle = COLORS.crank;
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(crankLeft, crankY);
+  ctx.lineTo(crankRight, crankY);
+  ctx.stroke();
+
+  // Crankshaft highlights
+  ctx.strokeStyle = '#d4944a';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(crankLeft, crankY - 2);
+  ctx.lineTo(crankRight, crankY - 2);
+  ctx.stroke();
+
+  // Main bearings
+  for (let i = 0; i < 5; i++) {
+    const bx = startX - 20 + i * (totalWidth + 40) / 4;
+    ctx.fillStyle = '#555';
+    ctx.beginPath();
+    ctx.arc(bx, crankY, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#777';
+    ctx.beginPath();
+    ctx.arc(bx, crankY, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Flywheel / Rotation indicator
+  const flyX = crankRight + 30;
+  const flyR = 25;
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(flyX, crankY, flyR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Rotation mark on flywheel
+  const rotAngle = crankAngle * Math.PI / 180;
+  ctx.strokeStyle = '#e94560';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(flyX, crankY);
+  ctx.lineTo(flyX + Math.cos(rotAngle) * flyR, crankY + Math.sin(rotAngle) * flyR);
+  ctx.stroke();
+
+  // Arrow indicator
+  ctx.fillStyle = '#e94560';
+  ctx.beginPath();
+  ctx.arc(flyX + Math.cos(rotAngle) * flyR, crankY + Math.sin(rotAngle) * flyR, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#aaa';
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('飞轮', flyX, crankY + flyR + 15);
+
+  // Exhaust manifold
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(startX + totalWidth + 10, cylTop + 40);
+  ctx.quadraticCurveTo(startX + totalWidth + 40, cylTop + 40, startX + totalWidth + 50, cylTop + 100);
+  ctx.stroke();
+  ctx.fillStyle = '#444';
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('排气歧管', startX + totalWidth + 50, cylTop + 120);
+
+  // Intake manifold
+  ctx.strokeStyle = '#3a6ea5';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(startX - 10, cylTop + 40);
+  ctx.quadraticCurveTo(startX - 40, cylTop + 40, startX - 50, cylTop + 100);
+  ctx.stroke();
+  ctx.fillStyle = '#4a9eff';
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('进气歧管', startX - 50, cylTop + 120);
+
+  // Title
+  ctx.fillStyle = '#e94560';
+  ctx.font = 'bold 14px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('直列四缸发动机 横截面视图', W / 2, H - 15);
+
+  // Update UI
+  updateStatus();
+}
+
+function updateStatus() {
+  const angleDisplay = Math.round(((crankAngle % 720) + 720) % 720);
+  document.getElementById('crankAngle').textContent = angleDisplay + '°';
+
+  const cycleMs = 720 / (rpm / 60 * 360) * 1000;
+  document.getElementById('cycleTime').textContent = cycleMs.toFixed(1) + 'ms';
+
+  const power = engineRunning ? (rpm / 14000) * 150 : 0;
+  document.getElementById('powerOutput').textContent = power.toFixed(1) + ' kW';
+
+  if (startTime) {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const min = Math.floor(elapsed / 60).toString().padStart(2, '0');
+    const sec = (elapsed % 60).toString().padStart(2, '0');
+    document.getElementById('runTime').textContent = `${min}:${sec}`;
+  }
+
+  // Cylinder status
+  const cylDiv = document.getElementById('cylStatus');
+  let html = '<h3 style="margin-top:15px;">🔥 气缸状态</h3>';
+  for (let i = 0; i < 4; i++) {
+    const stroke = getStroke(i, crankAngle);
+    const isFiring = stroke.type === 'power';
+    html += `
+      <div class="cyl-row">
+        <span class="cyl-name">${cylNames[i]}</span>
+        <span class="cyl-stroke" style="color:${stroke.color}">${stroke.name}</span>
+        <div class="fire-indicator ${isFiring ? 'firing' : ''}" id="fire${i}"></div>
+      </div>
+    `;
+  }
+  cylDiv.innerHTML = html;
+
+  // RPM bar
+  const rpmPct = (rpm - 800) / (14000 - 800) * 100;
+  const rpmBar = document.getElementById('rpmBar');
+  rpmBar.style.width = rpmPct + '%';
+  if (rpm < 4000) rpmBar.style.background = '#4ade80';
+  else if (rpm < 8000) rpmBar.style.background = '#f5a623';
+  else rpmBar.style.background = '#e94560';
+}
+
+function drawTimingDiagram() {
+  const W = tCanvas.width;
+  const H = tCanvas.height;
+  tCtx.clearRect(0, 0, W, H);
+
+  const bgGrad = tCtx.createLinearGradient(0, 0, W, H);
+  bgGrad.addColorStop(0, '#0f0f1a');
+  bgGrad.addColorStop(1, '#1a1a2e');
+  tCtx.fillStyle = bgGrad;
+  tCtx.fillRect(0, 0, W, H);
+
+  const margin = { left: 80, right: 40, top: 40, bottom: 40 };
+  const chartW = W - margin.left - margin.right;
+  const cylH = 25;
+  const cylGap2 = 8;
+  const totalH = 4 * (cylH + cylGap2);
+  const startY = margin.top + (H - margin.top - margin.bottom - totalH) / 2;
+
+  const currentAngle = ((crankAngle % 720) + 720) % 720;
+  const cursorX = margin.left + (currentAngle / 720) * chartW;
+
+  // Grid lines
+  tCtx.strokeStyle = '#1a1a3a';
+  tCtx.lineWidth = 1;
+  for (let deg = 0; deg <= 720; deg += 90) {
+    const x = margin.left + (deg / 720) * chartW;
+    tCtx.beginPath();
+    tCtx.moveTo(x, startY - 10);
+    tCtx.lineTo(x, startY + totalH + 10);
+    tCtx.stroke();
+
+    tCtx.fillStyle = '#666';
+    tCtx.font = '11px sans-serif';
+    tCtx.textAlign = 'center';
+    tCtx.fillText(deg + '°', x, startY + totalH + 25);
+  }
+
+  // Stroke phase backgrounds
+  const phases = [
+    { start: 0, end: 180, color: COLORS.intake, label: '进气' },
+    { start: 180, end: 360, color: COLORS.compression, label: '压缩' },
+    { start: 360, end: 540, color: COLORS.power, label: '做功' },
+    { start: 540, end: 720, color: COLORS.exhaust, label: '排气' }
+  ];
+
+  phases.forEach(p => {
+    const x1 = margin.left + (p.start / 720) * chartW;
+    const x2 = margin.left + (p.end / 720) * chartW;
+    tCtx.fillStyle = p.color + '10';
+    tCtx.fillRect(x1, startY - 15, x2 - x1, totalH + 30);
+  });
+
+  // Draw each cylinder timing
+  for (let i = 0; i < 4; i++) {
+    const y = startY + i * (cylH + cylGap2);
+
+    // Cylinder label
+    tCtx.fillStyle = '#e94560';
+    tCtx.font = 'bold 12px sans-serif';
+    tCtx.textAlign = 'right';
+    tCtx.fillText(`#${i + 1}`, margin.left - 10, y + cylH / 2 + 4);
+
+    // Stroke bars
+    phases.forEach(p => {
+      let s = (p.start - cylOffset[i] + 720) % 720;
+      let e = (p.end - cylOffset[i] + 720) % 720;
+
+      if (s < e) {
+        const x1 = margin.left + (s / 720) * chartW;
+        const x2 = margin.left + (e / 720) * chartW;
+        tCtx.fillStyle = p.color + '80';
+        tCtx.beginPath();
+        tCtx.roundRect(x1, y + 2, x2 - x1, cylH - 4, 3);
+        tCtx.fill();
+        tCtx.fillStyle = p.color + 'cc';
+        tCtx.fillRect(x1, y + cylH - 4, x2 - x1, 2);
+      } else {
+        // Wraps around
+        const x1 = margin.left + (s / 720) * chartW;
+        const x2 = margin.left + chartW;
+        tCtx.fillStyle = p.color + '80';
+        tCtx.beginPath();
+        tCtx.roundRect(x1, y + 2, x2 - x1, cylH - 4, 3);
+        tCtx.fill();
+
+        const x3 = margin.left;
+        const x4 = margin.left + (e / 720) * chartW;
+        tCtx.beginPath();
+        tCtx.roundRect(x3, y + 2, x4 - x3, cylH - 4, 3);
+        tCtx.fill();
+      }
+    });
+
+    // Current position marker on this row
+    const dotX = margin.left + (((currentAngle + cylOffset[i]) % 720) / 720) * chartW;
+    tCtx.fillStyle = '#fff';
+    tCtx.beginPath();
+    tCtx.arc(dotX, y + cylH / 2, 4, 0, Math.PI * 2);
+    tCtx.fill();
+  }
+
+  // Cursor line
+  tCtx.strokeStyle = '#e94560';
+  tCtx.lineWidth = 2;
+  tCtx.setLineDash([4, 4]);
+  tCtx.beginPath();
+  tCtx.moveTo(cursorX, startY - 20);
+  tCtx.lineTo(cursorX, startY + totalH + 10);
+  tCtx.stroke();
+  tCtx.setLineDash([]);
+
+  // Cursor label
+  tCtx.fillStyle = '#e94560';
+  tCtx.font = 'bold 11px sans-serif';
+  tCtx.textAlign = 'center';
+  tCtx.fillText(`当前 ${Math.round(currentAngle)}°`, cursorX, startY - 25);
+
+  // Title
+  tCtx.fillStyle = '#aaa';
+  tCtx.font = '12px sans-serif';
+  tCtx.textAlign = 'left';
+  tCtx.fillText('曲轴旋转角度 (720° 一个完整循环)', margin.left, 20);
+}
+
+function toggleEngine() {
+  const btn = document.getElementById('btnToggle');
+  if (engineRunning) {
+    engineRunning = false;
+    btn.textContent = '▶ 启动发动机';
+    btn.classList.remove('running');
+  } else {
+    engineRunning = true;
+    btn.textContent = '⏸ 停止发动机';
+    btn.classList.add('running');
+    startTime = Date.now();
+  }
+}
+
+function updateRPM(val) {
+  rpm = parseInt(val);
+  document.getElementById('rpmValue').textContent = rpm;
+}
+
+function updateSpeed(val) {
+  speedMult = val / 10;
+  document.getElementById('speedValue').textContent = speedMult.toFixed(1);
+}
+
+function animate(timestamp) {
+  if (!lastTime) lastTime = timestamp;
+  const dt = (timestamp - lastTime) / 1000;
+  lastTime = timestamp;
+
+  if (engineRunning) {
+    // Degrees per second = RPM / 60 * 360
+    const degPerSec = (rpm / 60) * 360;
+    crankAngle += degPerSec * dt * speedMult;
+    crankAngle = crankAngle % 720;
+  }
+
+  drawEngine();
+  drawTimingDiagram();
+
+  animId = requestAnimationFrame(animate);
+}
+
+// Polyfill roundRect if needed
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, radii) {
+    let r;
+    if (typeof radii === 'number') {
+      r = [radii, radii, radii, radii];
+    } else if (Array.isArray(radii)) {
+      r = radii.length === 4 ? radii : [radii[0] || 0, radii[1] || 0, radii[2] || 0, radii[3] || 0];
+    } else {
+      r = [0, 0, 0, 0];
+    }
+    this.moveTo(x + r[0], y);
+    this.lineTo(x + w - r[1], y);
+    this.arcTo(x + w, y, x + w, y + r[1], r[1]);
+    this.lineTo(x + w, y + h - r[2]);
+    this.arcTo(x + w, y + h, x + w - r[2], y + h, r[2]);
+    this.lineTo(x + r[3], y + h);
+    this.arcTo(x, y + h, x, y + h - r[3], r[3]);
+    this.lineTo(x, y + r[0]);
+    this.arcTo(x, y, x + r[0], y, r[0]);
+    this.closePath();
+    return this;
+  };
+}
+
+// Start animation loop
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

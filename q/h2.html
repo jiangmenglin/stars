@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>氢原子模拟 | Hydrogen Atom</title>
+<style>
+  :root {
+    --bg: #050810;
+    --panel: rgba(15, 20, 35, 0.85);
+    --accent: #00e5ff;
+    --accent-dim: #007a8a;
+    --text: #e6f2f5;
+    --text-dim: #8a9baa;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+  }
+  header, .controls {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 20px; background: var(--panel);
+    border-bottom: 1px solid rgba(255,255,255,0.06); flex-wrap: wrap; gap: 10px;
+    backdrop-filter: blur(6px); z-index: 10;
+  }
+  header h1 { font-size: 1.2rem; letter-spacing: .04em; white-space: nowrap; }
+  .controls {
+    background: rgba(10,15,28,.7); border-top: none; border-bottom: 1px solid rgba(255,255,255,0.04);
+    padding: 8px 20px;
+  }
+  .btn-group { display: flex; gap: 6px; }
+  button {
+    background: rgba(255,255,255,0.08); color: var(--text);
+    border: 1px solid rgba(255,255,255,0.15); padding: 5px 14px;
+    border-radius: 6px; cursor: pointer; font-size: .85rem; transition: all .2s;
+  }
+  button:hover, button.active { background: var(--accent-dim); border-color: var(--accent); }
+  label { font-size: .85rem; opacity: .85; display: flex; align-items: center; gap: 6px; }
+  input[type=range] { width: 120px; accent-color: var(--accent); }
+  canvas { display: block; flex: 1; cursor: crosshair; }
+  .info-panel {
+    position: fixed; display: none; pointer-events: none; z-index: 20;
+    background: rgba(12,18,30,.9); border: 1px solid rgba(0,229,255,.2);
+    border-radius: 10px; padding: 14px 16px; min-width: 220px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.6); backdrop-filter: blur(8px);
+  }
+  .info-panel h3 { color: var(--accent); margin-bottom: 6px; font-size: 1rem; }
+  .info-panel p { font-size: .82rem; color: var(--text-dim); margin: 3px 0; line-height: 1.4; white-space: pre-line; }
+  .badge { display: inline-block; background: rgba(0,229,255,.15); color: var(--accent); 
+           padding: 2px 6px; border-radius: 4px; font-size: .75rem; margin-right: 6px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚛️ 氢原子模拟运行</h1>
+  <div class="btn-group">
+    <button id="modeBohr" class="active">🔵 玻尔轨道</button>
+    <button id="modeCloud">🌫️ 量子云态</button>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="btn-group">
+    <button class="n-btn active" data-n="1">基态 $n=1$</button>
+    <button class="n-btn" data-n="2">激发 $n=2$</button>
+    <button class="n-btn" data-n="3">激发 $n=3$</button>
+  </div>
+  <label>速度: <input type="range" id="speedRange" min="0.2" max="3" step="0.1" value="1"></label>
+  <span id="speedVal" style="min-width:32px; text-align:center; font-size:.85rem;">1.0x</span>
+  <button id="btnPause">⏸ 暂停</button>
+  <button id="btnReset">🔄 重置</button>
+</div>
+
+<canvas id="atomCanvas"></canvas>
+
+<div class="info-panel" id="infoPanel">
+  <h3 id="infoName"></h3>
+  <p id="infoDetails"></p>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   氢原子模拟 | Hydrogen Atom Simulation
+   ═══════════════════════════════════════════ */
+const canvas = document.getElementById('atomCanvas');
+const ctx    = canvas.getContext('2d');
+const dpr    = window.devicePixelRatio || 1;
+
+let W, H, cx, cy;
+function resize() {
+  const rect = canvas.getBoundingClientRect();
+  canvas.width  = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  W = rect.width; H = rect.height;
+  cx = W / 2; cy = H / 2;
+  generateStars();
+}
+window.addEventListener('resize', resize);
+
+/* ---------- 状态 ---------- */
+const state = {
+  running: true,
+  speed: 1,
+  n: 1,
+  mode: 'bohr', // 'bohr' | 'cloud'
+  angle: 0,
+  trail: [],
+  maxTrail: 45
+};
+
+/* ---------- 星空背景 ---------- */
+let stars = [];
+function generateStars(n = 300) {
+  stars = Array.from({ length: n }, () => ({
+    x: Math.random() * W, y: Math.random() * H,
+    r: Math.random() * 1.2 + 0.2, a: Math.random() * 0.5 + 0.2
+  }));
+}
+
+/* ---------- 物理参数 ---------- */
+const baseRadius = 70;
+const getRadius = (n) => baseRadius * n * n;
+// 角速度随能级衰减: $\omega \propto 1/n$
+const getOmega  = (n) => 1.8 / n; 
+
+/* ---------- 绘制函数 ---------- */
+function drawStars() {
+  for (const s of stars) {
+    const twinkle = 0.7 + 0.3 * Math.sin(Date.now() / 600 + s.x * 0.5);
+    ctx.fillStyle = `rgba(255,255,255,${s.a * twinkle})`;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawNucleus() {
+  const pulse = 12 + 0.8 * Math.sin(Date.now() / 300);
+  // 外层辉光
+  const g1 = ctx.createRadialGradient(cx, cy, pulse * 0.5, cx, cy, pulse * 3);
+  g1.addColorStop(0, 'rgba(255,100,80,.35)'); g1.addColorStop(1, 'rgba(255,50,50,0)');
+  ctx.fillStyle = g1;
+  ctx.beginPath(); ctx.arc(cx, cy, pulse * 3, 0, Math.PI * 2); ctx.fill();
+
+  // 原子核本体
+  const g2 = ctx.createRadialGradient(cx - 3, cy - 3, 1, cx, cy, 9);
+  g2.addColorStop(0, '#fff'); g2.addColorStop(0.4, '#ff6655'); g2.addColorStop(1, '#cc3322');
+  ctx.fillStyle = g2;
+  ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.fill();
+
+  // 标注
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('p⁺', cx, cy + 20);
+}
+
+function drawOrbitRing(r) {
+  ctx.strokeStyle = 'rgba(255,255,255,.06)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 6]);
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawElectronTrail() {
+  for (let i = 0; i < state.trail.length; i++) {
+    const p = state.trail[i];
+    const alpha = (i / state.maxTrail) * 0.6;
+    ctx.fillStyle = `rgba(0, 229, 255, ${alpha})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawBohrElectron(ex, ey) {
+  // 发光
+  ctx.shadowColor = '#00e5ff'; ctx.shadowBlur = 14;
+  const grad = ctx.createRadialGradient(ex - 2, ey - 2, 1, ex, ey, 4);
+  grad.addColorStop(0, '#ffffff'); grad.addColorStop(1, '#00e5ff');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(ex, ey, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = 'rgba(200,230,255,.7)'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('e⁻', ex, ey - 9);
+}
+
+function drawQuantumCloud() {
+  const r = getRadius(state.n);
+  // 概率密度的简化可视化: 径向分布 $P(r) \propto r^2 e^{-2r/na_0}$，此处用均匀+高斯扰动模拟
+  for (let i = 0; i < 120; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const radial = r + (Math.random() - 0.5) * 25 * state.n;
+    const px = cx + Math.cos(theta) * radial;
+    const py = cy + Math.sin(theta) * radial;
+    const op = 0.08 + Math.random() * 0.15;
+    ctx.fillStyle = `rgba(0, 229, 255, ${op})`;
+    ctx.beginPath(); ctx.arc(px, py, 1.5, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+/* ---------- 主循环 ---------- */
+let lastTime = performance.now();
+let mouse = { x: 0, y: 0 };
+
+function loop(now) {
+  const dt = Math.min((now - lastTime) / 1000, 0.1);
+  lastTime = now;
+
+  ctx.clearRect(0, 0, W, H);
+  drawStars();
+
+  if (state.running) {
+    state.angle += getOmega(state.n) * state.speed * dt;
+    state.angle %= Math.PI * 2;
+  }
+
+  const r = getRadius(state.n);
+  const ex = cx + Math.cos(state.angle) * r;
+  const ey = cy + Math.sin(state.angle) * r;
+
+  // 轨道参考线
+  drawOrbitRing(r);
+
+  if (state.mode === 'cloud') {
+    drawQuantumCloud();
+  } else {
+    drawElectronTrail();
+    // 更新轨迹
+    state.trail.push({ x: ex, y: ey });
+    if (state.trail.length > state.maxTrail) state.trail.shift();
+  }
+
+  // 始终绘制电子核心（云态下作为概率中心指示）
+  drawBohrElectron(ex, ey);
+  drawNucleus();
+
+  /* 悬停检测 */
+  const info = document.getElementById('infoPanel');
+  const hitNucleus = Math.hypot(mouse.x - cx, mouse.y - cy) < 15;
+  const hitElectron = Math.hypot(mouse.x - ex, mouse.y - ey) < 12;
+
+  if (hitNucleus || hitElectron) {
+    info.style.display = 'block';
+    info.style.left = Math.min(mouse.x + 16, W - 240) + 'px';
+    info.style.top  = Math.min(mouse.y - 12, H - 10) + 'px';
+    
+    const isNucleus = hitNucleus;
+    document.getElementById('infoName').innerHTML = isNucleus 
+      ? `<span class="badge">原子核</span> 质子 (Proton)`
+      : `<span class="badge">电子</span> Electron (e⁻)`;
+    
+    const details = isNucleus
+      ? `位置: 原子中心\n电荷: $+e$\n质量: $1.67 \times 10^{-27}\text{ kg}$\n自旋: $\frac{1}{2}\hbar`
+      : `状态: ${state.n === 1 ? '基态' : `激发态 ($n=${state.n})$`}\n轨道半径: $\approx ${r}\text{ px (比例)}$\n角速度: $\omega \propto \frac{1}{n}$\n电荷: $-e$\n自旋: $\frac{1}{2}\hbar`;
+    document.getElementById('infoDetails').innerHTML = details.replace(/\$(.*?)\$/g, '<i>$1</i>');
+  } else {
+    info.style.display = 'none';
+  }
+
+  requestAnimationFrame(loop);
+}
+
+resize();
+requestAnimationFrame(loop);
+
+/* ---------- 交互控制 ---------- */
+document.getElementById('speedRange').addEventListener('input', e => {
+  state.speed = parseFloat(e.target.value);
+  document.getElementById('speedVal').textContent = state.speed.toFixed(1) + 'x';
+});
+
+document.getElementById('btnPause').addEventListener('click', function() {
+  state.running = !state.runnnig;
+  this.textContent = state.running ? '⏸ 暂停' : '▶ 播放';
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  state.angle = Math.random() * Math.PI * 2;
+  state.trail = [];
+});
+
+// 能级按钮
+document.querySelectorAll('.n-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.n-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    state.n = parseInt(this.dataset.n);
+    state.trail = [];
+    state.angle = Math.random() * Math.PI * 2;
+  });
+});
+
+// 模式切换
+const modeBohr = document.getElementById('modeBohr');
+const modeCloud = document.getElementById('modeCloud');
+modeBohr.addEventListener('click', () => {
+  state.mode = 'bohr';
+  modeBohr.classList.add('active'); modeCloud.classList.remove('active');
+});
+modeCloud.addEventListener('click', () => {
+  state.mode = 'cloud';
+  modeCloud.classList.add('active'); modeBohr.classList.remove('active');
+});
+
+// 鼠标追踪
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  mouse.x = e.clientX - rect.left;
+  mouse.y = e.clientY - rect.top;
+});
+canvas.addEventListener('mouseleave', () => { mouse.x = mouse.y = -9999; });
+</script>
+</body>
+</html>

@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>国际空间站绕地球运行模拟</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000008;
+            overflow: hidden;
+            font-family: 'Segoe UI', 'Microsoft YaHei', Arial, sans-serif;
+            color: #fff;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* 标题 */
+        .title {
+            position: fixed;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 22px;
+            color: #7db4ff;
+            letter-spacing: 4px;
+            text-shadow: 0 0 25px rgba(100, 160, 255, 0.5);
+            z-index: 100;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        /* 左侧控制面板 */
+        .controls {
+            position: fixed;
+            top: 60px;
+            left: 15px;
+            background: rgba(8, 12, 40, 0.88);
+            border: 1px solid rgba(80, 130, 255, 0.25);
+            border-radius: 14px;
+            padding: 18px;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+            min-width: 210px;
+        }
+
+        .controls h2 {
+            font-size: 15px;
+            margin-bottom: 14px;
+            color: #7db4ff;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        .control-group {
+            margin-bottom: 14px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #8899bb;
+            margin-bottom: 5px;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 4px;
+            background: rgba(80, 130, 255, 0.25);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            background: #7db4ff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 6px rgba(100, 160, 255, 0.5);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 8px;
+            margin-top: 4px;
+            background: rgba(80, 130, 255, 0.15);
+            border: 1px solid rgba(80, 130, 255, 0.35);
+            color: #7db4ff;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: rgba(80, 130, 255, 0.35);
+        }
+
+        .btn.active {
+            background: rgba(80, 130, 255, 0.45);
+            border-color: #7db4ff;
+        }
+
+        /* 右侧信息面板 */
+        .info-panel {
+            position: fixed;
+            top: 60px;
+            right: 15px;
+            background: rgba(8, 12, 40, 0.88);
+            border: 1px solid rgba(80, 130, 255, 0.25);
+            border-radius: 14px;
+            padding: 18px;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+            min-width: 230px;
+        }
+
+        .info-panel h2 {
+            font-size: 15px;
+            margin-bottom: 14px;
+            color: #7db4ff;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(80, 130, 255, 0.1);
+            font-size: 12px;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #7799bb;
+        }
+
+        .info-value {
+            color: #ffcc44;
+            font-weight: bold;
+            font-family: 'Consolas', monospace;
+        }
+
+        .info-value.speed-val {
+            color: #7dff9a;
+        }
+
+        .info-value.alt-val {
+            color: #ff9966;
+        }
+
+        .info-value.temp-val {
+            color: #66ccff;
+        }
+
+        /* 底部ISS介绍 */
+        .iss-intro {
+            position: fixed;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(8, 12, 40, 0.88);
+            border: 1px solid rgba(80, 130, 255, 0.2);
+            border-radius: 12px;
+            padding: 12px 22px;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+            text-align: center;
+            max-width: 700px;
+        }
+
+        .iss-intro p {
+            font-size: 11px;
+            color: #7799aa;
+            line-height: 1.7;
+        }
+
+        .iss-intro span.hl {
+            color: #ffcc44;
+            font-weight: bold;
+        }
+
+        /* 视角指示 */
+        .view-indicator {
+            position: fixed;
+            bottom: 80px;
+            right: 15px;
+            background: rgba(8, 12, 40, 0.8);
+            border: 1px solid rgba(80, 130, 255, 0.2);
+            border-radius: 10px;
+            padding: 10px 14px;
+            z-index: 100;
+            font-size: 11px;
+            color: #6688aa;
+        }
+
+        .view-indicator .key {
+            display: inline-block;
+            background: rgba(80, 130, 255, 0.2);
+            border: 1px solid rgba(80, 130, 255, 0.3);
+            border-radius: 4px;
+            padding: 1px 6px;
+            font-size: 10px;
+            color: #7db4ff;
+            margin: 0 2px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="title">🛰️ 国际空间站 (ISS) 轨道模拟</div>
+
+    <!-- 控制面板 -->
+    <div class="controls">
+        <h2>⚙ 控制面板</h2>
+        <div class="control-group">
+            <label>时间加速: <span id="speedVal">1.0</span>x</label>
+            <input type="range" id="speedSlider" min="0" max="20" step="0.5" value="1">
+        </div>
+        <div class="control-group">
+            <label>视图缩放: <span id="zoomVal">1.0</span>x</label>
+            <input type="range" id="zoomSlider" min="0.4" max="2.5" step="0.1" value="1">
+        </div>
+        <div class="control-group">
+            <label>轨道倾角: <span id="incVal">51.6</span>°</label>
+            <input type="range" id="incSlider" min="0" max="90" step="0.5" value="51.6">
+        </div>
+        <div class="control-group">
+            <label>地球自转</label>
+            <button class="btn active" id="toggleRotation">🌍 自转开启</button>
+        </div>
+        <div class="control-group">
+            <label>轨道轨迹</label>
+            <button class="btn active" id="toggleTrail">轨迹显示</button>
+        </div>
+        <div class="control-group">
+            <label>昼夜分界</label>
+            <button class="btn active" id="toggleTerminator">晨昏线显示</button>
+        </div>
+        <div class="control-group">
+            <button class="btn" id="toggleGrid">经纬网格</button>
+        </div>
+        <div class="control-group">
+            <button class="btn" id="pauseBtn">⏸ 暂停</button>
+        </div>
+    </div>
+
+    <!-- 信息面板 -->
+    <div class="info-panel">
+        <h2>📡 ISS 实时数据</h2>
+        <div class="info-row">
+            <span class="info-label">轨道高度</span>
+            <span class="info-value alt-val" id="altitude">408 km</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">运行速度</span>
+            <span class="info-value speed-val" id="velocity">7.66 km/s</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">轨道周期</span>
+            <span class="info-value" id="period">92.7 min</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">轨道倾角</span>
+            <span class="info-value" id="inclination">51.6°</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">经度</span>
+            <span class="info-value temp-val" id="longitude">0.0°</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">纬度</span>
+            <span class="info-value temp-val" id="latitude">0.0°</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">已绕行圈数</span>
+            <span class="info-value" id="orbits">0</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">运行时间</span>
+            <span class="info-value" id="elapsed">00:00:00</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">日/夜</span>
+            <span class="info-value" id="daynight">☀ 日照</span>
+        </div>
+    </div>
+
+    <!-- 操作提示 -->
+    <div class="view-indicator">
+        🖱️ 拖拽旋转视角 · 滚轮缩放 · <span class="key">Space</span> 暂停
+    </div>
+
+    <!-- ISS介绍 -->
+    <div class="iss-intro">
+        <p>国际空间站 (ISS) 在距地面约 <span class="hl">408公里</span> 的近地轨道运行，速度约 <span class="hl">7.66 km/s (27,600 km/h)</span>，每 <span class="hl">92.7分钟</span> 绕地球一圈，轨道倾角 <span class="hl">51.6°</span>，一天可绕行地球约 <span class="hl">15.5圈</span></p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let W, H, centerX, centerY;
+        function resize() {
+            W = canvas.width = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+            centerX = W / 2;
+            centerY = H / 2;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        // ================
+        // 3D 基础矩阵运算
+        // ================
+        function rotateX(point, angle) {
+            const c = Math.cos(angle), s = Math.sin(angle);
+            return [point[0], point[1] * c - point[2] * s, point[1] * s + point[2] * c];
+        }
+        function rotateY(point, angle) {
+            const c = Math.cos(angle), s = Math.sin(angle);
+            return [point[0] * c + point[2] * s, point[1], -point[0] * s + point[2] * c];
+        }
+        function rotateZ(point, angle) {
+            const c = Math.cos(angle), s = Math.sin(angle);
+            return [point[0] * c - point[1] * s, point[0] * s + point[1] * c, point[2]];
+        }
+
+        function project(point3d, scale) {
+            // 简单正交投影
+            return {
+                x: centerX + point3d[0] * scale,
+                y: centerY - point3d[1] * scale,
+                z: point3d[2]
+            };
+        }
+
+        // ================
+        // 状态变量
+        // ================
+        let timeSpeed = 1;
+        let zoom = 1;
+        let orbitalInclination = 51.6; // 度
+        let showTrail = true;
+        let showTerminator = true;
+        let showGrid = false;
+        let showRotation = true;
+        let isPaused = false;
+
+        let viewAngleX = 0.35; // 视角X旋转（上下）
+        let viewAngleY = 0;   // 视角Y旋转（左右）
+
+        let issAngle = 0; // ISS 在轨道上的角度
+        let earthRotation = 0; // 地球自转角度
+        let totalTime = 0; // 总运行时间（秒）
+        let orbitCount = 0;
+        let lastOrbitAngle = 0;
+
+        const earthRadius = 150; // 屏幕上地球半径基准
+        const issOrbitRadius = 195; // 屏幕上ISS轨道半径基准
+        const issTrail = [];
+        const MAX_TRAIL = 800;
+
+        // 鼠标交互
+        let isDragging = false;
+        let lastMouseX, lastMouseY;
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - lastMouseX;
+            const dy = e.clientY - lastMouseY;
+            viewAngleY += dx * 0.005;
+            viewAngleX += dy * 0.005;
+            viewAngleX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, viewAngleX));
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+        canvas.addEventListener('mouseup', () => isDragging = false);
+        canvas.addEventListener('mouseleave', () => isDragging = false);
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            zoom *= e.deltaY > 0 ? 0.95 : 1.05;
+            zoom = Math.max(0.3, Math.min(3, zoom));
+            document.getElementById('zoomSlider').value = zoom;
+            document.getElementById('zoomVal').textContent = zoom.toFixed(1);
+        }, { passive: false });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                isPaused = !isPaused;
+                document.getElementById('pauseBtn').textContent = isPaused ? '▶ 继续' : '⏸ 暂停';
+                document.getElementById('pauseBtn').classList.toggle('active', isPaused);
+            }
+        });
+
+        // 控制面板
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            timeSpeed = parseFloat(e.target.value);
+            document.getElementById('speedVal').textContent = timeSpeed.toFixed(1);
+        });
+        document.getElementById('zoomSlider').addEventListener('input', (e) => {
+            zoom = parseFloat(e.target.value);
+            document.getElementById('zoomVal').textContent = zoom.toFixed(1);
+        });
+        document.getElementById('incSlider').addEventListener('input', (e) => {
+            orbitalInclination = parseFloat(e.target.value);
+            document.getElementById('incVal').textContent = orbitalInclination.toFixed(1);
+            issTrail.length = 0;
+        });
+
+        function toggleBtn(id, stateRef, onText, offText) {
+            document.getElementById(id).addEventListener('click', (e) => {
+                stateRef.val = !stateRef.val;
+                e.target.classList.toggle('active');
+                e.target.textContent = stateRef.val ? onText : offText;
+                return stateRef.val;
+            });
+        }
+
+        const trailState = { val: showTrail };
+        const termState = { val: showTerminator };
+        const gridState = { val: showGrid };
+        const rotState = { val: showRotation };
+
+        document.getElementById('toggleTrail').addEventListener('click', (e) => {
+            trailState.val = !trailState.val;
+            showTrail = trailState.val;
+            e.target.classList.toggle('active');
+            e.target.textContent = showTrail ? '轨迹显示' : '轨迹隐藏';
+            if (!showTrail) issTrail.length = 0;
+        });
+
+        document.getElementById('toggleTerminator').addEventListener('click', (e) => {
+            termState.val = !termState.val;
+            showTerminator = termState.val;
+            e.target.classList.toggle('active');
+            e.target.textContent = showTerminator ? '晨昏线显示' : '晨昏线隐藏';
+        });
+
+        document.getElementById('toggleGrid').addEventListener('click', (e) => {
+            gridState.val = !gridState.val;
+            showGrid = gridState.val;
+            e.target.classList.toggle('active');
+        });
+
+        document.getElementById('toggleRotation').addEventListener('click', (e) => {
+            rotState.val = !rotState.val;
+            showRotation = rotState.val;
+            e.target.classList.toggle('active');
+            e.target.textContent = showRotation ? '🌍 自转开启' : '🌍 自转关闭';
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', (e) => {
+            isPaused = !isPaused;
+            e.target.textContent = isPaused ? '▶ 继续' : '⏸ 暂停';
+            e.target.classList.toggle('active', isPaused);
+        });
+
+        // ================
+        // 星空背景
+        // ================
+        const stars = [];
+        for (let i = 0; i < 600; i++) {
+            stars.push({
+                x: Math.random() * 3000 - 500,
+                y: Math.random() * 2000 - 500,
+                size: Math.random() * 1.4 + 0.3,
+                brightness: Math.random() * 0.7 + 0.3,
+                twinkle: Math.random() * 0.03 + 0.005
+            });
+        }
+
+        function drawStars() {
+            stars.forEach(s => {
+                const flicker = Math.sin(totalTime * s.twinkle * 60 + s.brightness * 50) * 0.25 + 0.75;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255,255,255,${s.brightness * flicker})`;
+                ctx.fill();
+            });
+        }
+
+        // ================
+        // 3D 地球绘制
+        // ================
+        function transformPoint(p) {
+            let pt = rotateX(p, viewAngleX);
+            pt = rotateY(pt, viewAngleY);
+            return pt;
+        }
+
+        function drawEarth() {
+            const R = earthRadius * zoom;
+            const scale = zoom;
+
+            // ---- 地球主体 ----
+            const earthGrad = ctx.createRadialGradient(
+                centerX - R * 0.2, centerY - R * 0.2, R * 0.1,
+                centerX, centerY, R
+            );
+            earthGrad.addColorStop(0, '#5bc0ff');
+            earthGrad.addColorStop(0.25, '#3a8fd4');
+            earthGrad.addColorStop(0.55, '#2a6fa8');
+            earthGrad.addColorStop(0.8, '#1a4f7a');
+            earthGrad.addColorStop(1, '#0d2847');
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, R, 0, Math.PI * 2);
+            ctx.fillStyle = earthGrad;
+            ctx.fill();
+
+            // ---- 大气层光晕 ----
+            const atmosGrad = ctx.createRadialGradient(centerX, centerY, R * 0.95, centerX, centerY, R * 1.12);
+            atmosGrad.addColorStop(0, 'rgba(100,180,255,0.15)');
+            atmosGrad.addColorStop(0.5, 'rgba(80,150,255,0.06)');
+            atmosGrad.addColorStop(1, 'rgba(50,100,255,0)');
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, R * 1.12, 0, Math.PI * 2);
+            ctx.fillStyle = atmosGrad;
+            ctx.fill();
+
+            // ---- 简化大陆轮廓 ----
+            drawContinents(R, scale);
+
+            // ---- 晨昏线 (昼夜分界) ----
+            if (showTerminator) {
+                drawTerminator(R);
+            }
+
+            // ---- 经纬网格 ----
+            if (showGrid) {
+                drawGridLines(R, scale);
+            }
+        }
+
+        function drawContinents(R, scale) {
+            // 绘制简化的大陆块 (球面坐标 -> 3D -> 投影)
+            const continents = [
+                // 非洲 (大致轮廓点, [经度, 纬度])
+                { color: '#2a8844', points: [[0, 35], [10, 35], [30, 30], [40, 12], [50, 0], [42, -15], [35, -35], [20, -35], [15, -25], [8, 5], [-5, 5], [-17, 15], [-15, 30], [0, 35]] },
+                // 欧洲
+                { color: '#339955', points: [[-10, 36], [0, 38], [5, 45], [10, 48], [20, 55], [30, 55], [40, 50], [45, 45], [30, 40], [25, 35], [10, 36], [0, 38], [-10, 43], [-10, 36]] },
+                // 亚洲
+                { color: '#2d7a3a', points: [[40, 50], [50, 55], [70, 65], [90, 70], [120, 65], [140, 55], [145, 45], [130, 35], [120, 30], [105, 25], [95, 20], [80, 15], [70, 25], [60, 30], [45, 35], [40, 50]] },
+                // 北美洲
+                { color: '#338844', points: [[-170, 65], [-140, 70], [-120, 60], [-100, 50], [-80, 45], [-75, 30], [-85, 25], [-100, 20], [-105, 25], [-120, 35], [-125, 48], [-140, 60], [-170, 65]] },
+                // 南美洲
+                { color: '#2a9944', points: [[-80, 10], [-75, 5], [-60, 5], [-35, -5], [-40, -15], [-50, -25], [-60, -40], [-70, -50], [-75, -45], [-70, -20], [-80, -5], [-80, 10]] },
+                // 澳大利亚
+                { color: '#88773a', points: [[115, -15], [130, -12], [145, -15], [150, -25], [148, -35], [140, -38], [130, -33], [115, -25], [115, -15]] },
+            ];
+
+            continents.forEach(continent => {
+                const projectedPoints = [];
+                let allBehind = true;
+
+                continent.points.forEach(([lon, lat]) => {
+                    const adjustedLon = lon + (earthRotation * 180 / Math.PI);
+                    const lonRad = adjustedLon * Math.PI / 180;
+                    const latRad = lat * Math.PI / 180;
+
+                    const x = Math.cos(latRad) * Math.cos(lonRad);
+                    const y = Math.sin(latRad);
+                    const z = Math.cos(latRad) * Math.sin(lonRad);
+
+                    let pt = transformPoint([x, y, z]);
+
+                    if (pt[2] > -0.1) allBehind = false;
+
+                    projectedPoints.push({
+                        x: centerX + pt[0] * R,
+                        y: centerY - pt[1] * R,
+                        z: pt[2]
+                    });
+                });
+
+                if (allBehind) return;
+
+                ctx.beginPath();
+                let started = false;
+                projectedPoints.forEach((p, i) => {
+                    if (p.z > -0.2) {
+                        if (!started) {
+                            ctx.moveTo(p.x, p.y);
+                            started = true;
+                        } else {
+                            ctx.lineTo(p.x, p.y);
+                        }
+                    }
+                });
+                ctx.closePath();
+                ctx.fillStyle = continent.color + '88';
+                ctx.fill();
+            });
+        }
+
+        function drawTerminator(R) {
+            // 太阳方向 (简化: 从右侧照射，可随时间微调)
+            const sunAngle = totalTime * 0.001;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, R, 0, Math.PI * 2);
+            ctx.clip();
+
+            // 画夜晚阴影半球
+            const shadowPoints = [];
+            for (let i = 0; i <= 64; i++) {
+                const t = (i / 64) * Math.PI * 2;
+                const x = Math.sin(t);
+                const y = Math.cos(t);
+                const z = 0;
+
+                // 旋转到太阳方向
+                let pt = rotateY([x, y, z], sunAngle);
+                pt = transformPoint(pt);
+
+                shadowPoints.push({
+                    x: centerX + pt[0] * R,
+                    y: centerY - pt[1] * R,
+                    z: pt[2]
+                });
+            }
+
+            ctx.beginPath();
+            // 绘制晨昏线然后填充夜晚侧
+            let foundStart = false;
+            shadowPoints.forEach((p, i) => {
+                if (i === 0) ctx.moveTo(p.x, p.y);
+                else ctx.lineTo(p.x, p.y);
+            });
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(0, 0, 20, 0.45)';
+            ctx.fill();
+
+            // 晨昏线
+            ctx.beginPath();
+            shadowPoints.forEach((p, i) => {
+                if (i === 0) ctx.moveTo(p.x, p.y);
+                else ctx.lineTo(p.x, p.y);
+            });
+            ctx.strokeStyle = 'rgba(255, 200, 100, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function drawGridLines(R, scale) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, R, 0, Math.PI * 2);
+            ctx.clip();
+
+            // 经线
+            for (let lon = -180; lon < 180; lon += 30) {
+                ctx.beginPath();
+                let started = false;
+                for (let lat = -90; lat <= 90; lat += 3) {
+                    const adjustedLon = lon + (earthRotation * 180 / Math.PI);
+                    const lonRad = adjustedLon * Math.PI / 180;
+                    const latRad = lat * Math.PI / 180;
+
+                    const x = Math.cos(latRad) * Math.cos(lonRad);
+                    const y = Math.sin(latRad);
+                    const z = Math.cos(latRad) * Math.sin(lonRad);
+
+                    let pt = transformPoint([x, y, z]);
+
+                    if (pt[2] > 0) {
+                        const px = centerX + pt[0] * R;
+                        const py = centerY - pt[1] * R;
+                        if (!started) { ctx.moveTo(px, py); started = true; }
+                        else ctx.lineTo(px, py);
+                    } else {
+                        started = false;
+                    }
+                }
+                ctx.strokeStyle = 'rgba(100,180,255,0.1)';
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+            }
+
+            // 纬线
+            for (let lat = -60; lat <= 60; lat += 30) {
+                ctx.beginPath();
+                let started = false;
+                for (let lon = 0; lon <= 360; lon += 3) {
+                    const adjustedLon = lon + (earthRotation * 180 / Math.PI);
+                    const lonRad = adjustedLon * Math.PI / 180;
+                    const latRad = lat * Math.PI / 180;
+
+                    const x = Math.cos(latRad) * Math.cos(lonRad);
+                    const y = Math.sin(latRad);
+                    const z = Math.cos(latRad) * Math.sin(lonRad);
+
+                    let pt = transformPoint([x, y, z]);
+
+                    if (pt[2] > 0) {
+                        const px = centerX + pt[0] * R;
+                        const py = centerY - pt[1] * R;
+                        if (!started) { ctx.moveTo(px, py); started = true; }
+                        else ctx.lineTo(px, py);
+                    } else {
+                        started = false;
+                    }
+                }
+                ctx.strokeStyle = 'rgba(100,180,255,0.1)';
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+            }
+
+            // 赤道线加粗
+            ctx.beginPath();
+            let started = false;
+            for (let lon = 0; lon <= 360; lon += 2) {
+                const adjustedLon = lon + (earthRotation * 180 / Math.PI);
+                const lonRad = adjustedLon * Math.PI / 180;
+
+                const x = Math.cos(lonRad);
+                const y = 0;
+                const z = Math.sin(lonRad);
+
+                let pt = transformPoint([x, y, z]);
+
+                if (pt[2] > 0) {
+                    const px = centerX + pt[0] * R;
+                    const py = centerY - pt[1] * R;
+                    if (!started) { ctx.moveTo(px, py); started = true; }
+                    else ctx.lineTo(px, py);
+                } else {
+                    started = false;
+                }
+            }
+            ctx.strokeStyle = 'rgba(255,200,100,0.2)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // ================
+        // ISS 位置计算与绘制
+        // ================
+        function getISSPosition3D(angle) {
+            const incRad = orbitalInclination * Math.PI / 180;
+            const oR = issOrbitRadius / earthRadius; // 归一化
+
+            // ISS在轨道平面上的位置
+            let x = Math.cos(angle) * oR;
+            let y = 0;
+            let z = Math.sin(angle) * oR;
+
+            // 按轨道倾角旋转
+            let pt = rotateX([x, y, z], incRad);
+
+            // 加入轨道进动 (RAAN缓慢变化)
+            const raan = totalTime * 0.0001;
+            pt = rotateY(pt, raan);
+
+            return pt;
+        }
+
+        function getISSLatLon(angle) {
+            const pt = getISSPosition3D(angle);
+            const incRad = orbitalInclination * Math.PI / 180;
+
+            // 简化经纬度计算
+            const lat = Math.asin(Math.sin(incRad) * Math.sin(angle)) * 180 / Math.PI;
+            let lon = (angle * 180 / Math.PI - earthRotation * 180 / Math.PI) % 360;
+            if (lon > 180) lon -= 360;
+            if (lon < -180) lon += 360;
+
+            return { lat, lon };
+        }
+
+        function drawISS() {
+            const R = earthRadius * zoom;
+            const oR = issOrbitRadius * zoom;
+
+            // ---- 绘制轨道环 ----
+            ctx.beginPath();
+            let orbitPoints = [];
+            for (let a = 0; a <= Math.PI * 2; a += 0.03) {
+                const pt3d = getISSPosition3D(a);
+                const pt = transformPoint(pt3d);
+                orbitPoints.push({
+                    x: centerX + pt[0] * R,
+                    y: centerY - pt[1] * R,
+                    z: pt[2]
+                });
+            }
+
+            // 根据z值分前后绘制
+            // 先画后面部分
+            ctx.beginPath();
+            let started = false;
+            orbitPoints.forEach((p, i) => {
+                if (p.z < 0) {
+                    if (!started) { ctx.moveTo(p.x, p.y); started = true; }
+                    else ctx.lineTo(p.x, p.y);
+                } else {
+                    started = false;
+                }
+            });
+            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 6]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 前面部分
+            ctx.beginPath();
+            started = false;
+            orbitPoints.forEach((p, i) => {
+                if (p.z >= 0) {
+                    if (!started) { ctx.moveTo(p.x, p.y); started = true; }
+                    else ctx.lineTo(p.x, p.y);
+                } else {
+                    started = false;
+                }
+            });
+            ctx.strokeStyle = 'rgba(100,180,255,0.2)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // ---- 绘制轨迹 ----
+            if (showTrail && issTrail.length > 1) {
+                for (let i = 1; i < issTrail.length; i++) {
+                    const p1 = issTrail[i - 1];
+                    const p2 = issTrail[i];
+                    if (p1.z >= 0 && p2.z >= 0) {
+                        const alpha = (i / issTrail.length) * 0.6;
+                        ctx.beginPath();
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.strokeStyle = `rgba(255,100,50,${alpha})`;
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // ---- ISS 位置 ----
+            const issPt3d = getISSPosition3D(issAngle);
+            const issPt = transformPoint(issPt3d);
+
+            const issScreenX = centerX + issPt[0] * R;
+            const issScreenY = centerY - issPt[1] * R;
+            const isFront = issPt[2] >= 0;
+
+            // 保存轨迹点
+            if (showTrail) {
+                issTrail.push({ x: issScreenX, y: issScreenY, z: issPt[2] });
+                if (issTrail.length > MAX_TRAIL) issTrail.shift();
+            }
+
+            if (isFront) {
+                // ISS 到地球表面的连线
+                const surfacePt = transformPoint([
+                    issPt3d[0] / (issOrbitRadius / earthRadius),
+                    issPt3d[1] / (issOrbitRadius / earthRadius),
+                    issPt3d[2] / (issOrbitRadius / earthRadius)
+                ]);
+                ctx.beginPath();
+                ctx.moveTo(issScreenX, issScreenY);
+                ctx.lineTo(centerX + surfacePt[0] * R, centerY - surfacePt[1] * R);
+                ctx.strokeStyle = 'rgba(255,200,50,0.15)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([2, 4]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // ISS 光晕
+                const glowGrad = ctx.createRadialGradient(issScreenX, issScreenY, 0, issScreenX, issScreenY, 20 * zoom);
+                glowGrad.addColorStop(0, 'rgba(255,220,100,0.5)');
+                glowGrad.addColorStop(0.5, 'rgba(255,180,50,0.15)');
+                glowGrad.addColorStop(1, 'rgba(255,100,0,0)');
+                ctx.beginPath();
+                ctx.arc(issScreenX, issScreenY, 20 * zoom, 0, Math.PI * 2);
+                ctx.fillStyle = glowGrad;
+                ctx.fill();
+
+                // ISS 本体（简化太阳能帆板造型）
+                drawISSModel(issScreenX, issScreenY, zoom);
+
+                // ISS 标签
+                ctx.font = `${11 * Math.max(zoom, 0.7)}px sans-serif`;
+                ctx.fillStyle = '#ffcc44';
+                ctx.textAlign = 'center';
+                ctx.fillText('ISS 🛰️', issScreenX, issScreenY - 18 * zoom);
+            } else {
+                // ISS在地球背面时，画一个半透明标记
+                ctx.beginPath();
+                ctx.arc(issScreenX, issScreenY, 3 * zoom, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,200,100,0.2)';
+                ctx.fill();
+            }
+
+            return { issPt3d, isFront };
+        }
+
+        function drawISSModel(x, y, scale) {
+            const s = scale * 1.2;
+
+            // 主体
+            ctx.fillStyle = '#ddd';
+            ctx.fillRect(x - 4 * s, y - 2 * s, 8 * s, 4 * s);
+
+            // 太阳能帆板
+            ctx.fillStyle = '#3366aa';
+            ctx.strokeStyle = '#5588cc';
+            ctx.lineWidth = 0.5;
+
+            // 左帆板
+            ctx.fillRect(x - 18 * s, y - 3 * s, 12 * s, 6 * s);
+            ctx.strokeRect(x - 18 * s, y - 3 * s, 12 * s, 6 * s);
+
+            // 右帆板
+            ctx.fillRect(x + 6 * s, y - 3 * s, 12 * s, 6 * s);
+            ctx.strokeRect(x + 6 * s, y - 3 * s, 12 * s, 6 * s);
+
+            // 帆板网格线
+            ctx.strokeStyle = 'rgba(100,150,220,0.4)';
+            ctx.lineWidth = 0.3;
+            for (let i = 1; i < 4; i++) {
+                // 左
+                ctx.beginPath();
+                ctx.moveTo(x - 18 * s + i * 3 * s, y - 3 * s);
+                ctx.lineTo(x - 18 * s + i * 3 * s, y + 3 * s);
+                ctx.stroke();
+                // 右
+                ctx.beginPath();
+                ctx.moveTo(x + 6 * s + i * 3 * s, y - 3 * s);
+                ctx.lineTo(x + 6 * s + i * 3 * s, y + 3 * s);
+                ctx.stroke();
+            }
+
+            // 连接杆
+            ctx.strokeStyle = '#aaa';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x - 18 * s, y);
+            ctx.lineTo(x + 18 * s, y);
+            ctx.stroke();
+        }
+
+        // ================
+        // 更新信息面板
+        // ================
+        function updateInfo() {
+            const { lat, lon } = getISSLatLon(issAngle);
+
+            document.getElementById('altitude').textContent = '408 km';
+            document.getElementById('velocity').textContent = '7.66 km/s';
+            document.getElementById('period').textContent = '92.7 min';
+            document.getElementById('inclination').textContent = orbitalInclination.toFixed(1) + '°';
+            document.getElementById('longitude').textContent = lon.toFixed(1) + '°';
+            document.getElementById('latitude').textContent = lat.toFixed(1) + '°';
+            document.getElementById('orbits').textContent = orbitCount;
+
+            // 运行时间
+            const h = Math.floor(totalTime / 3600);
+            const m = Math.floor((totalTime % 3600) / 60);
+            const s = Math.floor(totalTime % 60);
+            document.getElementById('elapsed').textContent =
+                `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+            // 日/夜判断 (简化)
+            const issPt = getISSPosition3D(issAngle);
+            const sunDot = issPt[0]; // 简化: 太阳在+x方向
+            document.getElementById('daynight').textContent = sunDot > 0 ? '☀️ 日照中' : '🌙 阴影区';
+            document.getElementById('daynight').style.color = sunDot > 0 ? '#ffcc44' : '#6688cc';
+        }
+
+        // ================
+        // 主动画循环
+        // ================
+        let lastTimestamp = 0;
+
+        function animate(timestamp) {
+            const dt = lastTimestamp ? (timestamp - lastTimestamp) / 1000 : 0.016;
+            lastTimestamp = timestamp;
+
+            ctx.fillStyle = '#000008';
+            ctx.fillRect(0, 0, W, H);
+
+            drawStars();
+
+            if (!isPaused) {
+                // ISS 公转 (92.7分钟一圈)
+                const orbitAngularSpeed = (2 * Math.PI) / (92.7 * 60); // rad/s
+                const prevAngle = issAngle;
+                issAngle += orbitAngularSpeed * dt * timeSpeed;
+
+                // 圈数计算
+                if (issAngle - lastOrbitAngle >= Math.PI * 2) {
+                    orbitCount++;
+                    lastOrbitAngle = issAngle - (issAngle % (Math.PI * 2));
+                }
+
+                // 地球自转 (24小时一圈)
+                if (showRotation) {
+                    const earthAngularSpeed = (2 * Math.PI) / (24 * 3600);
+                    earthRotation += earthAngularSpeed * dt * timeSpeed;
+                }
+
+                totalTime += dt * timeSpeed;
+            }
+
+            // 绘制顺序: 地球 -> ISS
+            drawEarth();
+            drawISS();
+            updateInfo();
+
+            requestAnimationFrame(animate);
+        }
+
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>
