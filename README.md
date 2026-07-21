@@ -1,4 +1,4 @@
-# Stars - 天文与物理交互模拟合集
+# AI model frontend test set
 
 - 本项目所有（100%）代码均由 AI 生成。运行前请自行审查，任何后果概不负责。
 - 一个基于 HTML5 Canvas 和 Three.js 的交互式天文、物理模拟合集，所有文件均为独立的 `.html` 文件，双击即可在浏览器中运行。
