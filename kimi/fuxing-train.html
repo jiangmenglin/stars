@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>复兴号 CR400AF · 结构爆炸图</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    background:
+      radial-gradient(1200px 500px at 50% -10%, rgba(60, 90, 160, .25), transparent 60%),
+      linear-gradient(180deg, #0b1220 0%, #0e1626 55%, #0a0f1c 100%);
+    color: #e7edf7;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  header {
+    width: 100%;
+    max-width: 1280px;
+    padding: 26px 24px 6px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  h1 {
+    font-size: 26px;
+    letter-spacing: 2px;
+    font-weight: 700;
+  }
+  h1 .red { color: #ff3b47; }
+
+  .sub {
+    margin-top: 6px;
+    font-size: 13px;
+    color: #8fa1bd;
+    letter-spacing: 1px;
+  }
+
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge {
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(140, 165, 205, .35);
+    background: rgba(30, 45, 75, .45);
+    color: #b9c8e0;
+    letter-spacing: 1px;
+  }
+  .badge b { color: #ffd166; font-weight: 600; }
+
+  .stage {
+    width: 100%;
+    max-width: 1280px;
+    padding: 8px 16px 0;
+  }
+
+  .panel {
+    background: rgba(16, 24, 42, .55);
+    border: 1px solid rgba(120, 145, 190, .18);
+    border-radius: 16px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255,255,255,.05);
+    backdrop-filter: blur(6px);
+    padding: 10px 10px 4px;
+  }
+
+  svg { width: 100%; height: auto; display: block; }
+
+  .controls {
+    width: 100%;
+    max-width: 1280px;
+    padding: 14px 16px 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .controls .row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .phase {
+    min-width: 220px;
+    font-size: 14px;
+    color: #9fb2d0;
+    letter-spacing: 1px;
+  }
+  .phase b { color: #fff; }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 8px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #ff3b47 var(--p, 0%), #26334c var(--p, 0%));
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff, #c9d4e6 60%, #93a5c2);
+    border: 3px solid #ff3b47;
+    box-shadow: 0 4px 14px rgba(255, 59, 71, .45);
+    cursor: grab;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff, #c9d4e6 60%, #93a5c2);
+    border: 3px solid #ff3b47;
+    box-shadow: 0 4px 14px rgba(255, 59, 71, .45);
+    cursor: grab;
+  }
+
+  .pct {
+    width: 64px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-size: 18px;
+    font-weight: 700;
+    color: #ffd166;
+  }
+
+  .btn {
+    border: 1px solid rgba(255, 59, 71, .6);
+    background: rgba(255, 59, 71, .12);
+    color: #ff8a92;
+    padding: 8px 18px;
+    font-size: 13px;
+    letter-spacing: 2px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: rgba(255, 59, 71, .28); color: #fff; }
+  .btn.playing { background: #ff3b47; color: #fff; }
+
+  .hint { font-size: 12px; color: #5f7089; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1><span class="red">复兴号</span> CR400AF 高速列车 · 结构爆炸图</h1>
+    <div class="sub">FUXING HIGH-SPEED TRAIN — EXPLODED VIEW（示意：3 辆编组简化模型）</div>
+  </div>
+  <div class="badges">
+    <div class="badge">运营时速 <b>350 km/h</b></div>
+    <div class="badge">中国标准动车组</div>
+    <div class="badge">拖动滑条分解部件</div>
+  </div>
+</header>
+
+<div class="stage">
+  <div class="panel">
+  <svg viewBox="0 0 1200 560" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f5f7fa"/>
+        <stop offset=".55" stop-color="#dbe2ea"/>
+        <stop offset="1" stop-color="#b4bfcc"/>
+      </linearGradient>
+      <linearGradient id="winGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#3d5a80"/>
+        <stop offset=".5" stop-color="#16222f"/>
+        <stop offset="1" stop-color="#0c141d"/>
+      </linearGradient>
+      <linearGradient id="redGrad" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#ff2333"/>
+        <stop offset=".5" stop-color="#d71920"/>
+        <stop offset="1" stop-color="#ff2333"/>
+      </linearGradient>
+      <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,.045)" stroke-width="1"/>
+      </pattern>
+    </defs>
+
+    <!-- 背景 -->
+    <rect x="0" y="0" width="1200" height="560" fill="url(#grid)"/>
+    <ellipse cx="600" cy="300" rx="560" ry="200" fill="rgba(70,110,190,.06)"/>
+
+    <!-- 轨道（静止） -->
+    <g id="g-track">
+      <rect x="40" y="362" width="1120" height="3" rx="1.5" fill="#6b7686"/>
+      <rect x="40" y="365" width="1120" height="2" fill="#3a4353"/>
+      <g fill="#262f3f">
+        <rect x="60"  y="367" width="26" height="6" rx="2"/><rect x="110" y="367" width="26" height="6" rx="2"/>
+        <rect x="160" y="367" width="26" height="6" rx="2"/><rect x="210" y="367" width="26" height="6" rx="2"/>
+        <rect x="260" y="367" width="26" height="6" rx="2"/><rect x="310" y="367" width="26" height="6" rx="2"/>
+        <rect x="360" y="367" width="26" height="6" rx="2"/><rect x="410" y="367" width="26" height="6" rx="2"/>
+        <rect x="460" y="367" width="26" height="6" rx="2"/><rect x="510" y="367" width="26" height="6" rx="2"/>
+        <rect x="560" y="367" width="26" height="6" rx="2"/><rect x="610" y="367" width="26" height="6" rx="2"/>
+        <rect x="660" y="367" width="26" height="6" rx="2"/><rect x="710" y="367" width="26" height="6" rx="2"/>
+        <rect x="760" y="367" width="26" height="6" rx="2"/><rect x="810" y="367" width="26" height="6" rx="2"/>
+        <rect x="860" y="367" width="26" height="6" rx="2"/><rect x="910" y="367" width="26" height="6" rx="2"/>
+        <rect x="960" y="367" width="26" height="6" rx="2"/><rect x="1010" y="367" width="26" height="6" rx="2"/>
+        <rect x="1060" y="367" width="26" height="6" rx="2"/><rect x="1110" y="367" width="26" height="6" rx="2"/>
+      </g>
+    </g>
+
+    <!-- 接触网（随分解淡出） -->
+    <line id="catenary" x1="40" y1="142" x2="1160" y2="142"
+          stroke="#8892a0" stroke-width="2" stroke-dasharray="14 10" opacity=".7"/>
+
+    <!-- ============ 车内（静止层：分解后显露） ============ -->
+    <g id="g-interior">
+      <rect x="150" y="291" width="900" height="7" fill="#7c8698"/>          <!-- 车内地板 -->
+      <rect x="210" y="238" width="780" height="5" rx="2" fill="#98a4b4" opacity=".85"/> <!-- 行李架 -->
+      <g id="seats"></g>                                                     <!-- 座椅（JS 生成） -->
+    </g>
+
+    <!-- ============ 底架 + 悬挂设备（静止层） ============ -->
+    <g id="g-chassis">
+      <rect x="95" y="298" width="1010" height="13" rx="3" fill="#2c333d"/>
+      <rect x="95" y="298" width="1010" height="4" rx="2" fill="#454f5c"/>
+      <rect x="470" y="311" width="150" height="22" rx="4" fill="#39424e" stroke="#4d5866"/>  <!-- 牵引变流器 -->
+      <rect x="640" y="311" width="90"  height="20" rx="4" fill="#39424e" stroke="#4d5866"/>
+      <rect x="250" y="311" width="110" height="20" rx="4" fill="#39424e" stroke="#4d5866"/>
+      <rect x="840" y="311" width="110" height="20" rx="4" fill="#39424e" stroke="#4d5866"/>
+    </g>
+
+    <!-- ============ 转向架（向下 +35） ============ -->
+    <g id="g-bogie"></g>
+
+    <!-- ============ 轮对（向下 +70） ============ -->
+    <g id="g-wheels"></g>
+
+    <!-- ============ 车体（向上 -70） ============ -->
+    <g id="g-shell">
+      <!-- 车体轮廓 -->
+      <path d="M 62 288
+               C 68 246 118 205 205 192
+               C 240 187 280 185 330 185
+               L 870 185
+               C 920 185 960 187 995 192
+               C 1082 205 1132 246 1138 288
+               C 1139 294 1134 298 1124 298
+               L 76 298
+               C 66 298 61 294 62 288 Z"
+            fill="url(#bodyGrad)" stroke="#8d99a8" stroke-width="1.5"/>
+
+      <!-- 车窗贯通黑带 -->
+      <rect x="200" y="203" width="812" height="35" rx="12" fill="#10161f"/>
+      <!-- 驾驶室挡风玻璃（左右车头） -->
+      <path d="M 92 236 C 118 210 158 199 200 196 L 200 236 Z" fill="url(#winGrad)"/>
+      <path d="M 1108 236 C 1082 210 1042 199 1000 196 L 1000 236 Z" fill="url(#winGrad)"/>
+
+      <!-- 红色腰线（CR400AF 标志性涂装） -->
+      <path d="M 80 258
+               C 100 246 150 241 210 240
+               L 990 240
+               C 1050 241 1100 246 1120 258
+               L 1115 267
+               C 1090 255 1045 251 990 251
+               L 210 251
+               C 155 251 110 255 85 267 Z"
+            fill="url(#redGrad)"/>
+      <rect x="200" y="238" width="812" height="3" fill="#d71920"/>
+
+      <!-- 车窗（JS 生成） -->
+      <g id="windows"></g>
+
+      <!-- 车门（JS 生成） -->
+      <g id="doors"></g>
+
+      <!-- 车厢连接处 -->
+      <line x1="460" y1="188" x2="460" y2="296" stroke="#77839a" stroke-width="2" stroke-dasharray="6 4"/>
+      <line x1="820" y1="188" x2="820" y2="296" stroke="#77839a" stroke-width="2" stroke-dasharray="6 4"/>
+
+      <!-- 前照灯 -->
+      <ellipse cx="88"   cy="272" rx="11" ry="4.5" fill="#fff8d6" stroke="#e8d98a" transform="rotate(-18 88 272)"/>
+      <ellipse cx="1112" cy="272" rx="11" ry="4.5" fill="#fff8d6" stroke="#e8d98a" transform="rotate(18 1112 272)"/>
+
+      <!-- 车型号标识 -->
+      <text x="560" y="278" font-size="13" fill="#5a6675" letter-spacing="2" font-weight="600">CR400AF</text>
+    </g>
+
+    <!-- ============ 车顶空调（向上 -95） ============ -->
+    <g id="g-ac">
+      <rect x="300" y="171" width="86" height="14" rx="7" fill="#b9c2cc" stroke="#8d99a8"/>
+      <rect x="392" y="173" width="52" height="12" rx="6" fill="#c3ccd6" stroke="#8d99a8"/>
+      <rect x="880" y="171" width="86" height="14" rx="7" fill="#b9c2cc" stroke="#8d99a8"/>
+      <rect x="792" y="173" width="52" height="12" rx="6" fill="#c3ccd6" stroke="#8d99a8"/>
+    </g>
+
+    <!-- ============ 受电弓（向上 -140） ============ -->
+    <g id="g-panto">
+      <rect x="604" y="177" width="10" height="8" rx="2" fill="#6a7482"/>
+      <rect x="686" y="177" width="10" height="8" rx="2" fill="#6a7482"/>
+      <line x1="600" y1="182" x2="700" y2="182" stroke="#5c6672" stroke-width="4"/>
+      <line x1="615" y1="182" x2="645" y2="158" stroke="#8a94a1" stroke-width="4"/>
+      <line x1="685" y1="182" x2="645" y2="158" stroke="#8a94a1" stroke-width="4"/>
+      <line x1="645" y1="158" x2="618" y2="147" stroke="#8a94a1" stroke-width="4"/>
+      <line x1="645" y1="158" x2="672" y2="147" stroke="#8a94a1" stroke-width="4"/>
+      <circle cx="645" cy="158" r="4" fill="#5c6672"/>
+      <line x1="600" y1="144" x2="700" y2="144" stroke="#d8dee6" stroke-width="5" stroke-linecap="round"/>
+    </g>
+
+    <!-- 轮下阴影（分解后出现） -->
+    <g id="g-shadow" opacity="0"></g>
+
+    <!-- 标注（引线 + 文字，JS 驱动） -->
+    <g id="g-labels" font-size="13" letter-spacing="1"></g>
+  </svg>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="row">
+    <div class="phase" id="phase">当前状态：<b>整车形态</b></div>
+    <input type="range" id="slider" min="0" max="100" value="0" step="1" aria-label="爆炸程度">
+    <div class="pct" id="pct">0%</div>
+    <button class="btn" id="playBtn">自动演示</button>
+  </div>
+  <div class="hint">拖动滑条（或按 ← → 方向键）将列车逐步分解，查看受电弓、车体、座椅、转向架、轮对等部件。</div>
+</div>
+
+<script>
+(function () {
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  /* ---------- 生成车窗 ---------- */
+  var winG = document.getElementById('windows');
+  [[210, 400], [520, 750], [890, 1000]].forEach(function (range) {
+    for (var x = range[0]; x + 30 <= range[1]; x += 40) {
+      el('rect', { x: x, y: 207, width: 30, height: 26, rx: 5, fill: 'url(#winGrad)', stroke: '#2b3a4d' }, winG);
+    }
+  });
+
+  /* ---------- 生成车门 ---------- */
+  var doorG = document.getElementById('doors');
+  [408, 478, 762, 848].forEach(function (d) {
+    el('rect', { x: d, y: 204, width: 30, height: 91, rx: 3, fill: '#cfd7e0', stroke: '#9aa6b5', 'stroke-width': 1.5 }, doorG);
+    el('rect', { x: d + 6, y: 210, width: 18, height: 26, rx: 3, fill: 'url(#winGrad)' }, doorG);
+    el('line', { x1: d + 15, y1: 240, x2: d + 15, y2: 292, stroke: '#9aa6b5', 'stroke-width': 1.5 }, doorG);
+  });
+
+  /* ---------- 生成座椅 ---------- */
+  var seatG = document.getElementById('seats');
+  for (var sx = 300; sx <= 930; sx += 42) {
+    el('rect', { x: sx, y: 258, width: 22, height: 26, rx: 4, fill: '#3b6ea5', stroke: '#2c5480' }, seatG);
+    el('rect', { x: sx, y: 258, width: 22, height: 8,  rx: 4, fill: '#5a8cc4' }, seatG);
+    el('rect', { x: sx - 3, y: 282, width: 28, height: 9, rx: 3, fill: '#33597f', stroke: '#2c5480' }, seatG);
+  }
+
+  /* ---------- 生成转向架 & 轮对 ---------- */
+  var bogieG = document.getElementById('g-bogie');
+  var wheelG = document.getElementById('g-wheels');
+  var shadowG = document.getElementById('g-shadow');
+  var centers = [205, 395, 545, 745, 885, 1065];
+  centers.forEach(function (c) {
+    el('path', { d: 'M ' + (c - 46) + ' 314 L ' + (c + 46) + ' 314 L ' + (c + 38) + ' 330 L ' + (c - 38) + ' 330 Z',
+                 fill: '#39424e', stroke: '#4d5866' }, bogieG);
+    el('rect', { x: c - 46, y: 312, width: 92, height: 6, rx: 3, fill: '#4a5563' }, bogieG);
+    el('rect', { x: c - 8, y: 318, width: 30, height: 14, rx: 3, fill: '#5b6673', stroke: '#707c8c' }, bogieG); // 牵引电机
+    [-26, 26].forEach(function (o) {
+      el('circle', { cx: c + o, cy: 346, r: 16, fill: '#1d232c', stroke: '#454f5c', 'stroke-width': 2 }, wheelG);
+      el('circle', { cx: c + o, cy: 346, r: 6, fill: '#6b7686' }, wheelG);
+      el('ellipse', { cx: c + o, cy: 440, rx: 22, ry: 4, fill: 'rgba(0,0,0,.4)' }, shadowG);
+    });
+    el('rect', { x: c - 26, y: 343, width: 52, height: 6, fill: '#333b46' }, wheelG); // 车轴
+  });
+
+  /* ---------- 爆炸位移配置 ---------- */
+  var parts = [
+    { el: document.getElementById('g-panto'),  dy: -140 },
+    { el: document.getElementById('g-ac'),     dy: -95  },
+    { el: document.getElementById('g-shell'),  dy: -70  },
+    { el: document.getElementById('g-bogie'),  dy: 35   },
+    { el: document.getElementById('g-wheels'), dy: 70   }
+  ];
+
+  /* ---------- 标注配置：文字固定，锚点随部件移动 ---------- */
+  var labelG = document.getElementById('g-labels');
+  var labels = [
+    { text: '受电弓',            lx: 795, ly: 52,  ax: 662, ay: 148, dy: -140, side: 'start' },
+    { text: '车顶空调机组',       lx: 258, ly: 66,  ax: 343, ay: 176, dy: -95,  side: 'end'   },
+    { text: '铝合金车体',         lx: 108, ly: 126, ax: 140, ay: 215, dy: -70,  side: 'end'   },
+    { text: '客室座椅',           lx: 975, ly: 252, ax: 640, ay: 272, dy: 0,    side: 'start' },
+    { text: '转向架',             lx: 965, ly: 330, ax: 585, ay: 322, dy: 35,   side: 'start' },
+    { text: '轮对',               lx: 965, ly: 425, ax: 571, ay: 346, dy: 70,   side: 'start' },
+    { text: '牵引电机',           lx: 330, ly: 452, ax: 552, ay: 325, dy: 35,   side: 'end'   },
+    { text: '牵引变流器',         lx: 140, ly: 388, ax: 500, ay: 322, dy: 0,    side: 'end'   }
+  ];
+  labels.forEach(function (L) {
+    L.line = el('line', { stroke: '#5b6b86', 'stroke-width': 1.2, opacity: 0 }, labelG);
+    L.dot  = el('circle', { r: 3.2, fill: '#ff3b47', opacity: 0 }, labelG);
+    L.txt  = el('text', { x: L.lx, y: L.ly, fill: '#dfe7f5', 'text-anchor': L.side, opacity: 0 }, labelG);
+    L.txt.textContent = L.text;
+    L.items = [L.line, L.dot, L.txt];
+  });
+
+  /* ---------- 动画驱动 ---------- */
+  var slider  = document.getElementById('slider');
+  var pct     = document.getElementById('pct');
+  var phase   = document.getElementById('phase');
+  var catenary = document.getElementById('catenary');
+  var playBtn = document.getElementById('playBtn');
+  var target = 0, current = 0, playing = false, playStart = 0;
+
+  // 支持通过 ?t=0~100 指定初始分解程度
+  var initT = parseFloat(new URLSearchParams(location.search).get('t'));
+  if (!isNaN(initT)) {
+    initT = Math.min(100, Math.max(0, initT));
+    target = current = initT / 100;
+    slider.value = Math.round(initT);
+  }
+
+  slider.addEventListener('input', function () {
+    stopPlay();
+    target = slider.value / 100;
+  });
+
+  playBtn.addEventListener('click', function () {
+    if (playing) { stopPlay(); return; }
+    playing = true;
+    playBtn.textContent = '停止演示';
+    playBtn.classList.add('playing');
+    playStart = performance.now() - (target * 4000); // 从当前进度继续
+  });
+
+  function stopPlay() {
+    playing = false;
+    playBtn.textContent = '自动演示';
+    playBtn.classList.remove('playing');
+  }
+
+  function apply(t) {
+    parts.forEach(function (p) {
+      p.el.setAttribute('transform', 'translate(0 ' + (p.dy * t) + ')');
+    });
+    catenary.setAttribute('opacity', Math.max(0, .7 - t * 1.2));
+    shadowG.setAttribute('opacity', t);
+
+    var labelOp = Math.min(1, Math.max(0, (t - 0.3) / 0.55));
+    labels.forEach(function (L) {
+      var ay = L.ay + L.dy * t;
+      var tx = L.side === 'end' ? L.lx + 8 : L.lx - 8;
+      L.line.setAttribute('x1', tx);  L.line.setAttribute('y1', L.ly - 4);
+      L.line.setAttribute('x2', L.ax); L.line.setAttribute('y2', ay);
+      L.dot.setAttribute('cx', L.ax); L.dot.setAttribute('cy', ay);
+      L.items.forEach(function (e) { e.setAttribute('opacity', labelOp); });
+    });
+
+    slider.style.setProperty('--p', (t * 100) + '%');
+    pct.textContent = Math.round(t * 100) + '%';
+    var name = t < 0.05 ? '整车形态' : (t < 0.85 ? '结构分解中…' : '爆炸图 · 部件一览');
+    phase.innerHTML = '当前状态：<b>' + name + '</b>';
+  }
+
+  function tick(now) {
+    if (playing) {
+      var cycle = ((now - playStart) / 4000) % 2;      // 4s 拆开，4s 复原
+      target = cycle < 1 ? cycle : 2 - cycle;
+      slider.value = Math.round(target * 100);
+      current += (target - current) * 0.25;
+    } else {
+      current += (target - current) * 0.12;
+    }
+    if (Math.abs(target - current) < 0.0005) current = target;
+    apply(current);
+    requestAnimationFrame(tick);
+  }
+  apply(current); // 立即应用初始状态，避免首帧闪烁
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
